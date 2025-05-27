@@ -1,12 +1,6 @@
-import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
-
-export async function GET() {
-    let menu = await prisma.menuItem.findMany({ orderBy: [{ id: "asc" }] });
-    return NextResponse.json(menu);
-}
-export async function POST(request) {
+export async function PUT(request, { params }) {
     try {
+        const { id } = params;
         const body = await request.json();
 
         // 檢查必要欄位
@@ -24,7 +18,21 @@ export async function POST(request) {
             );
         }
 
-        const newMenu = await prisma.menuItem.create({
+        // 確認該菜單是否存在
+        const existingItem = await prisma.menuItem.findUnique({
+            where: { id },
+        });
+
+        if (!existingItem) {
+            return Response.json(
+                { message: "找不到菜單項目" },
+                { status: 404 }
+            );
+        }
+
+        // 執行更新
+        const updatedMenu = await prisma.menuItem.update({
+            where: { id },
             data: {
                 name: body.name,
                 description: body.description || null,
@@ -37,7 +45,7 @@ export async function POST(request) {
             },
         });
 
-        return Response.json(newMenu);
+        return Response.json(updatedMenu);
     } catch (error) {
         console.error("後端錯誤:", error);
         return Response.json(
