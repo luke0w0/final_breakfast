@@ -132,7 +132,90 @@ export default function MenuManagementPage() {
                             onSubmit={handleCreate}
                             className="grid grid-cols-1 md:grid-cols-2 gap-6"
                         >
-                            {/* 新增菜單表單內容略，保持不變 */}
+                            <div>
+                                <label className="block mb-1 text-sm font-medium text-gray-700">
+                                    名稱
+                                </label>
+                                <input
+                                    type="text"
+                                    value={newItem.name}
+                                    onChange={(e) =>
+                                        setNewItem({
+                                            ...newItem,
+                                            name: e.target.value,
+                                        })
+                                    }
+                                    className="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-pink-400"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block mb-1 text-sm font-medium text-gray-700">
+                                    價格
+                                </label>
+                                <input
+                                    type="number"
+                                    value={newItem.price}
+                                    onChange={(e) =>
+                                        setNewItem({
+                                            ...newItem,
+                                            price: parseFloat(e.target.value),
+                                        })
+                                    }
+                                    className="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-pink-400"
+                                    required
+                                />
+                            </div>
+
+                            <div className="md:col-span-2">
+                                <label className="block mb-1 text-sm font-medium text-gray-700">
+                                    描述
+                                </label>
+                                <textarea
+                                    value={newItem.description}
+                                    onChange={(e) =>
+                                        setNewItem({
+                                            ...newItem,
+                                            description: e.target.value,
+                                        })
+                                    }
+                                    className="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-pink-400"
+                                />
+                            </div>
+
+                            <div className="md:col-span-2">
+                                <label className="block mb-1 text-sm font-medium text-gray-700">
+                                    圖片 URL
+                                </label>
+                                <input
+                                    type="text"
+                                    value={newItem.imageUrl}
+                                    onChange={(e) =>
+                                        setNewItem({
+                                            ...newItem,
+                                            imageUrl: e.target.value,
+                                        })
+                                    }
+                                    className="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-pink-400"
+                                />
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row gap-4 md:col-span-2">
+                                <button
+                                    type="submit"
+                                    className="bg-gradient-to-r from-pink-500 to-red-500 text-white px-4 py-2 rounded-md shadow hover:opacity-90 transition"
+                                >
+                                    新增
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsCreating(false)}
+                                    className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700"
+                                >
+                                    取消
+                                </button>
+                            </div>
                         </form>
                     </div>
                 )}

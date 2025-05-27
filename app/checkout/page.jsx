@@ -11,53 +11,60 @@ export default function CheckoutPage() {
     const [specialRequests, setSpecialRequests] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const menusData = [
-        {
-            "id": "item1",
-            "name": "火腿蛋吐司",
-            "price": 45
-        },
-        {
-            "id": "item2",
-            "name": "培根總匯三明治",
-            "price": 65
-        },
-        {
-            "id": "item3",
-            "name": "奶茶（中）",
-            "price": 30
-        },
-        {
-            "id": "item4",
-            "name": "美式咖啡",
-            "price": 40
-        }
-    ];
+    // const menusData = [
+    //     {
+    //         id: "item1",
+    //         name: "火腿蛋吐司",
+    //         price: 45,
+    //     },
+    //     {
+    //         id: "item2",
+    //         name: "培根總匯三明治",
+    //         price: 65,
+    //     },
+    //     {
+    //         id: "item3",
+    //         name: "奶茶（中）",
+    //         price: 30,
+    //     },
+    //     {
+    //         id: "item4",
+    //         name: "美式咖啡",
+    //         price: 40,
+    //     },
+    // ];
 
-    const cartData = [
-        {
-            "id": "item1",
-            "quantity": 2
-        },
-        {
-            "id": "item3",
-            "quantity": 1
-        }
-    ];
+    // const cartData = [
+    //     {
+    //         id: "item1",
+    //         quantity: 2,
+    //     },
+    //     {
+    //         id: "item4",
+    //         quantity: 1,
+    //     },
+    // ];
 
     useEffect(() => {
-        // const savedCart = localStorage.getItem("cart");
-        // if (savedCart) {
-        //     setCart(JSON.parse(savedCart));
-        // }
+        const savedCart = sessionStorage.getItem("cart");
+        if (savedCart) {
+            setCart(JSON.parse(savedCart));
+        }
 
-        setCart(cartData);
+        // setCart(cartData);
 
-        // fetch("/api/menu")
-        //     .then((res) => res.json())
-        //     .then((data) => setMenuItems(data));
+        const getMenuItems = async () => {
+            try {
+                const response = await fetch("/api/menu");
+                const data = await response.json();
+                setMenuItems(data);
+            } catch (err) {
+                console.error(err);
+            }
+        };
+        getMenuItems();
 
-        setMenuItems(menusData);
+        // setMenuItems(menusData);
     }, []);
 
     const getTotalPrice = () => {
@@ -90,7 +97,9 @@ export default function CheckoutPage() {
 
     return (
         <div className="container mx-auto p-6">
-            <h1 className="text-3xl font-bold text-gray-800 mb-8 text-center">確認訂單</h1>
+            <h1 className="text-3xl font-bold text-gray-800 mb-8 text-center">
+                確認訂單
+            </h1>
 
             {cart.length === 0 ? (
                 <div className="text-center text-gray-500 text-lg mt-20">
@@ -101,7 +110,9 @@ export default function CheckoutPage() {
                     onSubmit={handleSubmit}
                     className="max-w-2xl mx-auto bg-white shadow-lg rounded-xl p-6 space-y-6"
                 >
-                    <h2 className="text-xl font-semibold text-gray-700">訂單明細</h2>
+                    <h2 className="text-xl font-semibold text-gray-700">
+                        訂單明細
+                    </h2>
 
                     <ul className="divide-y">
                         {cart.map((cartItem) => {
@@ -111,14 +122,21 @@ export default function CheckoutPage() {
                             if (!menuItem) return null;
 
                             return (
-                                <li key={cartItem.id} className="py-4 space-y-2">
+                                <li
+                                    key={cartItem.id}
+                                    className="py-4 space-y-2"
+                                >
                                     <div className="flex justify-between items-center">
                                         <span className="text-gray-800 font-medium">
-                                            {menuItem.name} × {cartItem.quantity}
+                                            {menuItem.name} ×{" "}
+                                            {cartItem.quantity}
                                         </span>
                                         <span className="text-right font-semibold text-gray-700">
                                             $
-                                            {(menuItem.price * cartItem.quantity).toFixed(2)}
+                                            {(
+                                                menuItem.price *
+                                                cartItem.quantity
+                                            ).toFixed(2)}
                                         </span>
                                     </div>
                                     <div>
@@ -133,11 +151,15 @@ export default function CheckoutPage() {
                                             className="w-full border rounded-md p-2 text-sm text-gray-700 focus:ring-2 focus:ring-blue-300 resize-none"
                                             rows={2}
                                             placeholder="例如：去冰、少糖..."
-                                            value={specialRequests[cartItem.id] || ""}
+                                            value={
+                                                specialRequests[cartItem.id] ||
+                                                ""
+                                            }
                                             onChange={(e) =>
                                                 setSpecialRequests((prev) => ({
                                                     ...prev,
-                                                    [cartItem.id]: e.target.value,
+                                                    [cartItem.id]:
+                                                        e.target.value,
                                                 }))
                                             }
                                         />
