@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 // import { createMenuItem, updateMenuItem } from "@/app/menu/actions";
+import Image from "next/image";
 
 export default function MenuManagementPage() {
     const [menuItems, setMenuItems] = useState([]);
@@ -83,267 +84,122 @@ export default function MenuManagementPage() {
     };
 
     return (
-        <div className="container mx-auto p-4">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold">菜單管理</h1>
-                <button
-                    onClick={() => setIsCreating(true)}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-                >
-                    新增菜單
-                </button>
-            </div>
-
-            {isCreating && (
-                <div className="bg-white p-4 rounded-lg shadow-md mb-6">
-                    <h2 className="text-xl font-bold mb-4">新增菜單物品</h2>
-                    <form onSubmit={handleCreate} className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                名稱
-                            </label>
-                            <input
-                                type="text"
-                                value={newItem.name}
-                                onChange={(e) =>
-                                    setNewItem({
-                                        ...newItem,
-                                        name: e.target.value,
-                                    })
-                                }
-                                required
-                                className="w-full p-2 border rounded"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                描述
-                            </label>
-                            <textarea
-                                value={newItem.description}
-                                onChange={(e) =>
-                                    setNewItem({
-                                        ...newItem,
-                                        description: e.target.value,
-                                    })
-                                }
-                                className="w-full p-2 border rounded"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                價格
-                            </label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={newItem.price}
-                                onChange={(e) =>
-                                    setNewItem({
-                                        ...newItem,
-                                        price: parseFloat(e.target.value),
-                                    })
-                                }
-                                required
-                                className="w-full p-2 border rounded"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                圖片 URL
-                            </label>
-                            <input
-                                type="text"
-                                value={newItem.imageUrl}
-                                onChange={(e) =>
-                                    setNewItem({
-                                        ...newItem,
-                                        imageUrl: e.target.value,
-                                    })
-                                }
-                                className="w-full p-2 border rounded"
-                            />
-                        </div>
-
-                        <div className="flex space-x-4">
-                            <button
-                                type="submit"
-                                className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
-                            >
-                                新增
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setIsCreating(false)}
-                                className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700"
-                            >
-                                取消
-                            </button>
-                        </div>
-                    </form>
+        <div className="min-h-screen bg-gradient-to-br from-orange-100 via-pink-100 to-red-100 px-4 sm:px-8 py-8">
+            <div className="max-w-6xl mx-auto">
+                <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+                    <h1 className="text-3xl font-bold text-gray-800 text-center sm:text-left">🍱 菜單管理</h1>
+                    <button
+                        onClick={() => setIsCreating(true)}
+                        className="bg-gradient-to-r from-pink-500 to-red-500 text-white px-6 py-2 rounded-md shadow hover:opacity-90 transition w-full sm:w-auto"
+                    >
+                        新增菜單
+                    </button>
                 </div>
-            )}
 
-            <div className="bg-white shadow-md rounded-lg overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                名稱
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                描述
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                價格
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                狀態
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                操作
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                        {menuItems.map((item) => (
-                            <tr key={item.id}>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    {editingId === item.id ? (
-                                        <input
-                                            type="text"
-                                            value={editItem.name || ""}
-                                            onChange={(e) =>
-                                                setEditItem({
-                                                    ...editItem,
-                                                    name: e.target.value,
-                                                })
-                                            }
-                                            className="w-full p-1 border rounded"
-                                        />
-                                    ) : (
-                                        <div className="text-sm font-medium text-gray-900">
-                                            {item.name}
-                                        </div>
-                                    )}
-                                </td>
-                                <td className="px-6 py-4">
-                                    {editingId === item.id ? (
-                                        <textarea
-                                            value={editItem.description || ""}
-                                            onChange={(e) =>
-                                                setEditItem({
-                                                    ...editItem,
-                                                    description: e.target.value,
-                                                })
-                                            }
-                                            className="w-full p-1 border rounded"
-                                        />
-                                    ) : (
-                                        <div className="text-sm text-gray-500">
-                                            {item.description}
-                                        </div>
-                                    )}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    {editingId === item.id ? (
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            value={editItem.price || 0}
-                                            onChange={(e) =>
-                                                setEditItem({
-                                                    ...editItem,
-                                                    price: parseFloat(
-                                                        e.target.value
-                                                    ),
-                                                })
-                                            }
-                                            className="w-full p-1 border rounded"
-                                        />
-                                    ) : (
-                                        <div className="text-sm text-gray-500">
-                                            ${item.price.toFixed(2)}
-                                        </div>
-                                    )}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    {editingId === item.id ? (
-                                        <select
-                                            value={
-                                                editItem.isAvailable
-                                                    ? "true"
-                                                    : "false"
-                                            }
-                                            onChange={(e) =>
-                                                setEditItem({
-                                                    ...editItem,
-                                                    isAvailable:
-                                                        e.target.value ===
-                                                        "true",
-                                                })
-                                            }
-                                            className="w-full p-1 border rounded"
-                                        >
-                                            <option value="true">
-                                                Available
-                                            </option>
-                                            <option value="false">
-                                                Unavailable
-                                            </option>
-                                        </select>
-                                    ) : (
-                                        <span
-                                            className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                                item.isAvailable
-                                                    ? "bg-green-100 text-green-800"
-                                                    : "bg-red-100 text-red-800"
-                                            }`}
-                                        >
-                                            {item.isAvailable
-                                                ? "Available"
-                                                : "Unavailable"}
-                                        </span>
-                                    )}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    {editingId === item.id ? (
-                                        <div className="space-x-2">
-                                            <button
-                                                onClick={() =>
-                                                    handleEdit(item.id)
-                                                }
-                                                className="text-green-600 hover:text-green-900"
-                                            >
-                                                Save
-                                            </button>
-                                            <button
-                                                onClick={() =>
-                                                    setEditingId(null)
-                                                }
-                                                className="text-gray-600 hover:text-gray-900"
-                                            >
-                                                Cancel
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <button
-                                            onClick={() => startEditing(item)}
-                                            className="text-blue-600 hover:text-blue-900 mr-2"
-                                        >
-                                            Edit
-                                        </button>
-                                    )}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+                {isCreating && (
+                    <div className="bg-white p-6 rounded-lg shadow-lg mb-10">
+                        <h2 className="text-xl font-semibold mb-4">新增餐點</h2>
+                        <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="block mb-1 text-sm font-medium text-gray-700">名稱</label>
+                                <input
+                                    type="text"
+                                    value={newItem.name}
+                                    onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
+                                    className="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-pink-400"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block mb-1 text-sm font-medium text-gray-700">價格</label>
+                                <input
+                                    type="number"
+                                    value={newItem.price}
+                                    onChange={(e) => setNewItem({ ...newItem, price: parseFloat(e.target.value) })}
+                                    className="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-pink-400"
+                                    required
+                                />
+                            </div>
+
+                            <div className="md:col-span-2">
+                                <label className="block mb-1 text-sm font-medium text-gray-700">描述</label>
+                                <textarea
+                                    value={newItem.description}
+                                    onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
+                                    className="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-pink-400"
+                                />
+                            </div>
+
+                            <div className="md:col-span-2">
+                                <label className="block mb-1 text-sm font-medium text-gray-700">圖片 URL</label>
+                                <input
+                                    type="text"
+                                    value={newItem.imageUrl}
+                                    onChange={(e) => setNewItem({ ...newItem, imageUrl: e.target.value })}
+                                    className="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-pink-400"
+                                />
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row gap-4 md:col-span-2">
+                                <button
+                                    type="submit"
+                                    className="bg-gradient-to-r from-pink-500 to-red-500 text-white px-4 py-2 rounded-md shadow hover:opacity-90 transition"
+                                >
+                                    新增
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsCreating(false)}
+                                    className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700"
+                                >
+                                    取消
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {menuItems.map((item) => (
+                        <div
+                            key={item.id}
+                            className="bg-white rounded-xl shadow-lg p-5 hover:shadow-xl transition relative"
+                        >
+                            <Image
+                                src={item.imageUrl || "/placeholder.png"}
+                                alt={item.name}
+                                width={400}
+                                height={250}
+                                className="rounded-md w-full h-48 object-cover mb-4"
+                            />
+                            <h3 className="text-lg font-bold text-gray-800 mb-1">
+                                {item.name}
+                            </h3>
+                            <p className="text-sm text-gray-600 mb-2 line-clamp-3">
+                                {item.description}
+                            </p>
+                            <div className="flex flex-wrap justify-between items-center gap-2">
+                                <span className="text-pink-600 font-semibold text-lg">
+                                    ${item.price.toFixed(2)}
+                                </span>
+                                <span
+                                    className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                        item.isAvailable ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                                    }`}
+                                >
+                                    {item.isAvailable ? "供應中" : "已下架"}
+                                </span>
+                            </div>
+                            <button
+                                onClick={() => startEditing(item)}
+                                className="absolute top-3 right-3 text-sm text-blue-600 hover:underline"
+                            >
+                                編輯
+                            </button>
+                        </div>
+                    ))}
+                </div>
             </div>
         </div>
     );

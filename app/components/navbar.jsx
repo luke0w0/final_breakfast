@@ -1,7 +1,6 @@
 "use client";
 
-// import { signOut } from "@/auth";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 
 export default function Navbar() {
@@ -14,23 +13,23 @@ export default function Navbar() {
         switch (user.role) {
             case "CUSTOMER":
                 return [
-                    { href: "/menu", name: "Menu" },
-                    { href: "/orders", name: "My Orders" },
+                    { href: "/menu", name: "菜單" },
+                    { href: "/orders", name: "我的訂單" },
                 ];
             case "STAFF":
                 return [
-                    { href: "/orders/pending", name: "Pending Orders" },
-                    { href: "/orders/ready", name: "Ready Orders" },
+                    { href: "/orders/pending", name: "等待中的訂單" },
+                    { href: "/orders/ready", name: "完成的訂單" },
                 ];
             case "CHEF":
-                return [{ href: "/kitchen", name: "Kitchen Orders" }];
+                return [{ href: "/kitchen", name: "廚房訂單" }];
             case "OWNER":
                 return [
-                    { href: "/admin/menu", name: "Menu Management" },
-                    { href: "/admin/users", name: "User Management" },
-                    { href: "/orders/pending", name: "Pending Orders" },
-                    { href: "/orders/ready", name: "Ready Orders" },
-                    { href: "/kitchen", name: "Kitchen Orders" },
+                    { href: "/admin/menu", name: "菜單管理" },
+                    { href: "/admin/users", name: "使用者管理" },
+                    { href: "/orders/pending", name: "等待中的訂單" },
+                    { href: "/orders/ready", name: "完成的訂單" },
+                    { href: "/kitchen", name: "廚房訂單" },
                 ];
             default:
                 return [];
@@ -38,46 +37,49 @@ export default function Navbar() {
     };
 
     return (
-        <nav className="sticky top-0 z-50 bg-blue-600 text-white p-4">
-            <div className="container mx-auto flex justify-between items-center">
-                <Link href="/" className="text-xl font-bold">
-                    Breakfast Express
+        <nav className="sticky top-0 z-50 bg-gradient-to-r from-orange-400 via-pink-500 to-red-500 text-white shadow-md">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center overflow-x-auto">
+                <Link
+                    href="/"
+                    className="text-2xl font-bold tracking-wide hover:opacity-90 transition-opacity duration-300"
+                    aria-label="前往首頁"
+                >
+                    🍽 網路早餐訂餐系統
                 </Link>
 
-                <div className="flex items-center space-x-4">
+                <div className="flex flex-wrap items-center gap-4">
                     {user ? (
                         <>
-                            <div className="flex space-x-4">
-                                {getRoleLinks().map((link) => (
-                                    <Link
-                                        key={link.href}
-                                        href={link.href}
-                                        className="hover:underline"
-                                    >
-                                        {link.name}
-                                    </Link>
-                                ))}
-                            </div>
-                            <span className="mr-2">Hello, {user.name}</span>
-                            <form
-                                action={async () => {
-                                    await signOut();
-                                }}
-                            >
-                                <button
-                                    type="submit"
-                                    className="bg-red-500 hover:bg-red-700 px-3 py-1 rounded"
+                            {getRoleLinks().map((link) => (
+                                <Link
+                                    key={link.href}
+                                    href={link.href}
+                                    className="text-white font-medium hover:underline hover:text-yellow-200 transition duration-300"
+                                    aria-label={link.name}
                                 >
-                                    Sign Out
-                                </button>
-                            </form>
+                                    {link.name}
+                                </Link>
+                            ))}
+
+                            <span className="hidden sm:inline-block font-semibold">
+                                您好，{user.name}
+                            </span>
+
+                            <button
+                                onClick={() => signOut()}
+                                className="bg-white text-pink-600 font-semibold px-3 py-1.5 rounded-md hover:bg-gray-100 transition duration-300"
+                                aria-label="登出帳號"
+                            >
+                                登出
+                            </button>
                         </>
                     ) : (
                         <Link
                             href="/login"
-                            className="bg-white text-blue-600 px-3 py-1 rounded hover:bg-gray-100"
+                            className="bg-white text-pink-600 font-semibold px-4 py-1.5 rounded-md hover:bg-gray-100 transition duration-300"
+                            aria-label="登入帳號"
                         >
-                            Login
+                            登入
                         </Link>
                     )}
                 </div>
