@@ -1,103 +1,144 @@
 "use client";
 
-import { useFormState, useFormStatus } from "react-dom";
-import { signIn } from "next-auth/react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-
-// import { authenticate } from "@/app/auth/actions";
+import { signIn } from "next-auth/react";
 
 export default function LoginPage() {
-    // const [errorMessage, dispatch] = useFormState(authenticate, undefined);
-    const [errorMessage, dispatch] = [null, null];
+    const router = useRouter();
+    const [formData, setFormData] = useState({
+        email: "",
+        password: "",
+    });
+    const [error, setError] = useState("");
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData((prev) => ({ ...prev, [name]: value }));
+    };
+
+    const handleLogin = async (e) => {
+        e.preventDefault();
+        setError("");
+
+        const { email, password } = formData;
+
+        if (!email || !password) {
+            setError("所有欄位皆為必填");
+            return;
+        }
+
+        setIsSubmitting(true);
+
+        try {
+            const res = await fetch("/api/auth/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, password }),
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || "登入失敗");
+
+            const user = data.user;
+
+            sessionStorage.setItem("user", JSON.stringify(user));
+            window.location.href = "/";
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-300 via-pink-400 to-red-400 px-4">
-            <div className="bg-white/80 backdrop-blur-lg p-8 rounded-xl shadow-xl w-full max-w-md">
-                <h1 className="text-3xl font-bold mb-6 text-center text-gray-800">登入帳號</h1>
+            <div className="max-w-md w-full bg-white/30 backdrop-blur-lg border border-white/30 shadow-2xl rounded-2xl p-8 transition-all">
+                <h2 className="text-3xl font-extrabold text-center text-gray-700 drop-shadow mb-6">
+                    登入帳號
+                </h2>
 
-                <form action={dispatch} className="space-y-6">
-                    <div>
-                        <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                            電子郵件
-                        </label>
-                        <input
-                            id="email"
-                            type="email"
-                            name="email"
-                            required
-                            placeholder="your@email.com"
-                            className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 focus:outline-none"
-                        />
+                {error && (
+                    <div className="mb-4 text-red-600 text-sm text-center font-medium bg-red-100 p-2 rounded-md shadow-sm">
+                        ⚠️ {error}
                     </div>
+                )}
 
-                    <div>
-                        <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                            密碼
-                        </label>
-                        <input
-                            id="password"
-                            type="password"
-                            name="password"
-                            required
-                            placeholder="請輸入密碼"
-                            className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 focus:outline-none"
-                        />
-                    </div>
+                <form onSubmit={handleLogin} className="space-y-5">
+                    <InputField
+                        label="電子信箱"
+                        name="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={handleChange}
+                    />
+                    <InputField
+                        label="密碼"
+                        name="password"
+                        type="password"
+                        value={formData.password}
+                        onChange={handleChange}
+                    />
 
-                    <LoginButton />
-
-                    {errorMessage && (
-                        <p className="text-red-600 text-sm mt-2 animate-fade-in">
-                            {errorMessage}
-                        </p>
-                    )}
+                    <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="w-full bg-gradient-to-r from-pink-500 to-red-500 text-white font-bold py-2 rounded-lg hover:opacity-90 transition disabled:opacity-50 drop-shadow-md"
+                    >
+                        {isSubmitting ? "登入中..." : "登入"}
+                    </button>
                 </form>
 
-                <div className="mt-6">
-                    <div className="flex items-center justify-center">
-                        <div className="w-full border-t border-gray-300"></div>
-                        <span className="px-3 text-gray-500 text-sm">或</span>
-                        <div className="w-full border-t border-gray-300"></div>
-                    </div>
-
-                    <div className="mt-4 text-center">
-                        <button
-                            type="button"
-                            onClick={() => signIn("google")}
-                            className="w-full bg-white text-gray-800 border border-gray-300 py-2 px-4 rounded-md flex items-center justify-center gap-2 shadow hover:bg-gray-50 transition duration-300"
-                        >
-                            <Image
-                                src="/google.png"
-                                alt="Google"
-                                width={24}
-                                height={24}
-                            />
-                            使用 Google 登入
-                        </button>
-                    </div>
-                </div>
-
                 <div className="mt-6 text-center">
-                    <Link href="/register" className="text-pink-600 hover:underline font-medium">
-                        還沒有帳號？立即註冊
-                    </Link>
+                    <button
+                        type="button"
+                        onClick={() => signIn("google")}
+                        className="w-full bg-white text-gray-800 border border-gray-300 py-2 px-4 rounded-md flex items-center justify-center gap-2 shadow hover:bg-gray-50 transition"
+                    >
+                        <Image
+                            src="/google.png"
+                            alt="Google"
+                            width={24}
+                            height={24}
+                        />
+                        使用 Google 登入
+                    </button>
                 </div>
+
+                <p className="mt-6 text-center text-sm text-gray-700">
+                    還沒有帳號？{" "}
+                    <Link
+                        href="/register"
+                        className="text-pink-700 underline font-semibold hover:text-gray-200"
+                    >
+                        立即註冊
+                    </Link>
+                </p>
             </div>
         </div>
     );
 }
 
-function LoginButton() {
-    const { pending } = useFormStatus();
-
+function InputField({ label, name, type, value, onChange }) {
     return (
-        <button
-            type="submit"
-            aria-disabled={pending}
-            className="w-full bg-gradient-to-r from-pink-500 to-red-500 text-white py-2 px-4 rounded-md font-semibold shadow hover:opacity-90 transition duration-300 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:ring-offset-2"
-        >
-            {pending ? "登入中..." : "登入"}
-        </button>
+        <div>
+            <label
+                htmlFor={name}
+                className="block text-sm font-semibold text-gray-800 mb-1"
+            >
+                {label}
+            </label>
+            <input
+                type={type}
+                name={name}
+                id={name}
+                value={value}
+                onChange={onChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm bg-white/80 text-gray-800 focus:ring-2 focus:ring-pink-400 focus:outline-none"
+            />
+        </div>
     );
 }

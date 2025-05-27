@@ -2,10 +2,22 @@
 
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
+import { useState } from "react";
 
 export default function Navbar() {
+    const [isLoginFromGoogle, setIsLoginFromGoogle] = useState(false);
     const { data: session } = useSession();
-    const user = session?.user;
+
+    const oauthUser = session?.user;
+    const sessionUser = JSON.parse(sessionStorage.getItem("user"));
+    let user;
+    if (oauthUser) {
+        user = oauthUser;
+        setIsLoginFromGoogle(true);
+    } else if (sessionUser) {
+        user = sessionUser;
+    } else {
+    }
 
     const getRoleLinks = () => {
         if (!user) return [];
@@ -64,9 +76,15 @@ export default function Navbar() {
                             <span className="hidden sm:inline-block font-semibold">
                                 您好，{user.name}
                             </span>
-
                             <button
-                                onClick={() => signOut()}
+                                onClick={() => {
+                                    if (isLoginFromGoogle) {
+                                        signOut(); // 登出 Google 帳號
+                                    } else {
+                                        sessionStorage.removeItem("user");
+                                        window.location.href = "/login";
+                                    }
+                                }}
                                 className="bg-white text-pink-600 font-semibold px-3 py-1.5 rounded-md hover:bg-gray-100 transition duration-300"
                                 aria-label="登出帳號"
                             >
