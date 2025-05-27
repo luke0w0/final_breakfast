@@ -40,7 +40,7 @@ export async function POST(request) {
         return NextResponse.json(
             {
                 message: "登入成功",
-                user: { userId: user.id, role: user.role, name: user.name },
+                user: { id: user.id, role: user.role, name: user.name },
             },
             { status: 200 }
         );

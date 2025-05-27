@@ -10,7 +10,13 @@ export default function CheckoutPage() {
     const [menuItems, setMenuItems] = useState([]);
     const [specialRequests, setSpecialRequests] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
-
+    const [user, setUser] = useState({});
+    useEffect(() => {
+        const sessionUser = sessionStorage.getItem("user");
+        if (sessionUser) {
+            setUser(JSON.parse(sessionUser));
+        }
+    }, []);
     // const menusData = [
     //     {
     //         id: "item1",
@@ -49,6 +55,8 @@ export default function CheckoutPage() {
         const savedCart = sessionStorage.getItem("cart");
         if (savedCart) {
             setCart(JSON.parse(savedCart));
+        } else {
+            window.location.href = "/";
         }
 
         // setCart(cartData);
@@ -83,10 +91,15 @@ export default function CheckoutPage() {
                 quantity: item.quantity,
                 specialRequest: specialRequests[item.id] || "",
             }));
-            // TODO: 新增 createOrder()
-            await createOrder(orderItems, getTotalPrice());
-            localStorage.removeItem("cart");
-            router.push("/orders");
+            await fetch(`/api/orders/${user.id}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    orderItems,
+                }),
+            });
+            sessionStorage.removeItem("cart");
+            window.location.href = "/orders";
         } catch (err) {
             console.error("下單失敗：", err);
             alert("下單失敗，請稍後再試！");
