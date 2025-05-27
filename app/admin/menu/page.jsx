@@ -1,7 +1,7 @@
 "use client";
 import { MenuItem } from "@prisma/client";
 import { useEffect, useState } from "react";
-import { createMenuItem, updateMenuItem } from "@/app/menu/actions";
+// import { createMenuItem, updateMenuItem } from "@/app/menu/actions";
 
 export default function MenuManagementPage() {
     const [menuItems, setMenuItems] = useState([]);
@@ -71,24 +71,22 @@ export default function MenuManagementPage() {
     return (
         <div className="container mx-auto p-4">
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold">Menu Management</h1>
+                <h1 className="text-2xl font-bold">菜單管理</h1>
                 <button
                     onClick={() => setIsCreating(true)}
                     className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
                 >
-                    Add New Item
+                    新增菜單
                 </button>
             </div>
 
             {isCreating && (
                 <div className="bg-white p-4 rounded-lg shadow-md mb-6">
-                    <h2 className="text-xl font-bold mb-4">
-                        Create New Menu Item
-                    </h2>
+                    <h2 className="text-xl font-bold mb-4">新增菜單物品</h2>
                     <form onSubmit={handleCreate} className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Name
+                                名稱
                             </label>
                             <input
                                 type="text"
@@ -106,7 +104,7 @@ export default function MenuManagementPage() {
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Description
+                                描述
                             </label>
                             <textarea
                                 value={newItem.description}
@@ -122,7 +120,7 @@ export default function MenuManagementPage() {
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Price
+                                價格
                             </label>
                             <input
                                 type="number"
@@ -142,7 +140,7 @@ export default function MenuManagementPage() {
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Image URL
+                                圖片 URL
                             </label>
                             <input
                                 type="text"
@@ -162,14 +160,14 @@ export default function MenuManagementPage() {
                                 type="submit"
                                 className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
                             >
-                                Create
+                                新增
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setIsCreating(false)}
                                 className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700"
                             >
-                                Cancel
+                                取消
                             </button>
                         </div>
                     </form>
@@ -181,19 +179,19 @@ export default function MenuManagementPage() {
                     <thead className="bg-gray-50">
                         <tr>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Name
+                                名稱
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Description
+                                描述
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Price
+                                價格
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Status
+                                狀態
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Actions
+                                操作
                             </th>
                         </tr>
                     </thead>
