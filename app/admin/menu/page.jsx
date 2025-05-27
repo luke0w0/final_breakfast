@@ -1,5 +1,5 @@
 "use client";
-import { MenuItem } from "@prisma/client";
+
 import { useEffect, useState } from "react";
 // import { createMenuItem, updateMenuItem } from "@/app/menu/actions";
 
@@ -24,15 +24,29 @@ export default function MenuManagementPage() {
 
     const handleCreate = async (e) => {
         e.preventDefault();
+
         try {
-            const createdItem = await createMenuItem(
-                newItem.name,
-                newItem.description,
-                newItem.price,
-                newItem.imageUrl
-            );
-            setMenuItems((prev) => [...prev, createdItem]);
-            setIsCreating(false);
+            const itemToSend = {
+                ...newItem,
+                price: parseFloat(newItem.price),
+            };
+
+            const response = await fetch("/api/menu", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(itemToSend),
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText);
+            }
+
+            const data = await response.json();
+            console.log("成功新增資料:", data);
+            setMenuItems((prev) => [...prev, data]);
             setNewItem({
                 name: "",
                 description: "",
@@ -41,7 +55,7 @@ export default function MenuManagementPage() {
                 isAvailable: true,
             });
         } catch (error) {
-            console.error("Failed to create menu item:", error);
+            console.error("發生錯誤:", error.message);
         }
     };
 
