@@ -8,49 +8,6 @@ export default function MenuPage() {
     const [menuItems, setMenuItems] = useState([]);
     const [cart, setCart] = useState([]);
 
-    // const menus = [
-    //     {
-    //         id: "item-1",
-    //         name: "經典蛋餅",
-    //         description: "香煎蛋餅搭配醬油膏與胡椒，酥脆外皮包覆滑嫩蛋香。",
-    //         price: 35,
-    //         imageUrl: "/food01.jpg",
-    //         isAvailable: true,
-    //     },
-    //     {
-    //         id: "item-2",
-    //         name: "火腿起司三明治",
-    //         description: "火腿與起司完美結合，吐司外酥內軟，一口幸福。",
-    //         price: 45,
-    //         imageUrl: "/food02.jpg",
-    //         isAvailable: true,
-    //     },
-    //     {
-    //         id: "item-3",
-    //         name: "鐵板炒麵",
-    //         description: "熱騰騰的鐵板炒麵配上醬香與蔬菜，份量十足的元氣早餐。",
-    //         price: 55,
-    //         imageUrl: "/food03.jpg",
-    //         isAvailable: true,
-    //     },
-    //     {
-    //         id: "item-4",
-    //         name: "蘿蔔糕套餐",
-    //         description: "煎得金黃酥脆的蘿蔔糕，附上特製辣椒醬與荷包蛋。",
-    //         price: 40,
-    //         imageUrl: "/food04.jpg",
-    //         isAvailable: true,
-    //     },
-    //     {
-    //         id: "item-5",
-    //         name: "奶茶（中杯）",
-    //         description: "香濃紅茶加上新鮮牛奶，早晨的最佳拍檔。",
-    //         price: 25,
-    //         imageUrl: "/images/milk-tea.jpg",
-    //         isAvailable: false,
-    //     },
-    // ];
-
     useEffect(() => {
         const getMenuItems = async () => {
             try {
@@ -62,8 +19,6 @@ export default function MenuPage() {
             }
         };
         getMenuItems();
-
-        // setMenuItems(menus);
     }, []);
 
     const addToCart = (itemId) => {

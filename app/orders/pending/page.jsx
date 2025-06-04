@@ -5,130 +5,6 @@ import { useEffect, useState } from "react";
 
 export default function PendingOrdersPage() {
     const [orders, setOrders] = useState([]);
-    // const ordersData = [
-    //     {
-    //         id: "order101",
-    //         status: "PENDING",
-    //         paymentStatus: false,
-    //         totalAmount: 75,
-    //         createdAt: "2025-05-28T08:00:00Z",
-    //         customer: {
-    //             name: "陳小明",
-    //         },
-    //         items: [
-    //             {
-    //                 id: "item-a",
-    //                 menuItem: {
-    //                     name: "培根蛋餅",
-    //                     price: 40,
-    //                 },
-    //                 quantity: 1,
-    //                 specialRequest: "加辣",
-    //             },
-    //             {
-    //                 id: "item-b",
-    //                 menuItem: {
-    //                     name: "紅茶（中）",
-    //                     price: 15,
-    //                 },
-    //                 quantity: 2,
-    //                 specialRequest: "",
-    //             },
-    //         ],
-    //     },
-    //     {
-    //         id: "order102",
-    //         status: "PENDING",
-    //         paymentStatus: true,
-    //         totalAmount: 90,
-    //         createdAt: "2025-05-28T08:15:00Z",
-    //         customer: {
-    //             name: "林美麗",
-    //         },
-    //         items: [
-    //             {
-    //                 id: "item-c",
-    //                 menuItem: {
-    //                     name: "鐵板麵套餐",
-    //                     price: 60,
-    //                 },
-    //                 quantity: 1,
-    //                 specialRequest: "不要加蛋",
-    //             },
-    //             {
-    //                 id: "item-d",
-    //                 menuItem: {
-    //                     name: "奶茶（大）",
-    //                     price: 30,
-    //                 },
-    //                 quantity: 1,
-    //                 specialRequest: "",
-    //             },
-    //         ],
-    //     },
-    //     {
-    //         id: "order103",
-    //         status: "PREPARING",
-    //         paymentStatus: true,
-    //         totalAmount: 120,
-    //         createdAt: "2025-05-27T12:30:00Z",
-    //         customer: {
-    //             name: "王大華",
-    //         },
-    //         items: [
-    //             {
-    //                 id: "item-e",
-    //                 menuItem: {
-    //                     name: "招牌炒飯",
-    //                     price: 80,
-    //                 },
-    //                 quantity: 1,
-    //                 specialRequest: "",
-    //             },
-    //             {
-    //                 id: "item-f",
-    //                 menuItem: {
-    //                     name: "冬瓜茶（大）",
-    //                     price: 40,
-    //                 },
-    //                 quantity: 1,
-    //                 specialRequest: "去冰",
-    //             },
-    //         ],
-    //     },
-    //     {
-    //         id: "order104",
-    //         status: "READY",
-    //         paymentStatus: false,
-    //         totalAmount: 50,
-    //         createdAt: "2025-05-28T09:45:00Z",
-    //         customer: {
-    //             name: "李小美",
-    //         },
-    //         items: [
-    //             {
-    //                 id: "item-g",
-    //                 menuItem: {
-    //                     name: "蔥抓餅",
-    //                     price: 50,
-    //                 },
-    //                 quantity: 1,
-    //                 specialRequest: "不要加辣",
-    //             },
-    //         ],
-    //     },
-    //     {
-    //         id: "order105",
-    //         status: "CANCELLED",
-    //         paymentStatus: false,
-    //         totalAmount: 0,
-    //         createdAt: "2025-05-26T15:00:00Z",
-    //         customer: {
-    //             name: "張志明",
-    //         },
-    //         items: [],
-    //     },
-    // ];
 
     useEffect(() => {
         const getPendingOrders = async () => {
@@ -154,7 +30,6 @@ export default function PendingOrdersPage() {
             }
         };
         getPendingOrders();
-        // setOrders(ordersData);
     }, []);
 
     const handleStatusChange = async (orderId, status) => {

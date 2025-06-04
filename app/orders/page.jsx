@@ -5,90 +5,12 @@ import Link from "next/link";
 
 export default function OrdersPage() {
     const [orders, setOrders] = useState([]);
-    // const ordersData = [
-    //     {
-    //         id: "order001",
-    //         status: "PENDING",
-    //         paymentStatus: false,
-    //         totalAmount: 85,
-    //         createdAt: "2025-05-28T07:45:00Z",
-    //         completedAt: null,
-    //         items: [
-    //             {
-    //                 id: "item-001",
-    //                 menuItem: {
-    //                     name: "經典蛋餅",
-    //                     price: 35,
-    //                 },
-    //                 quantity: 1,
-    //                 specialRequest: "不要加胡椒",
-    //             },
-    //             {
-    //                 id: "item-002",
-    //                 menuItem: {
-    //                     name: "奶茶（中杯）",
-    //                     price: 25,
-    //                 },
-    //                 quantity: 2,
-    //                 specialRequest: "",
-    //             },
-    //         ],
-    //     },
-    //     {
-    //         id: "order002",
-    //         status: "READY",
-    //         paymentStatus: true,
-    //         totalAmount: 55,
-    //         createdAt: "2025-05-28T08:20:00Z",
-    //         completedAt: null,
-    //         items: [
-    //             {
-    //                 id: "item-003",
-    //                 menuItem: {
-    //                     name: "火腿起司三明治",
-    //                     price: 45,
-    //                 },
-    //                 quantity: 1,
-    //                 specialRequest: "加辣",
-    //             },
-    //             {
-    //                 id: "item-004",
-    //                 menuItem: {
-    //                     name: "紅茶（大杯）",
-    //                     price: 10,
-    //                 },
-    //                 quantity: 1,
-    //                 specialRequest: "",
-    //             },
-    //         ],
-    //     },
-    //     {
-    //         id: "order003",
-    //         status: "COMPLETED",
-    //         paymentStatus: true,
-    //         totalAmount: 40,
-    //         createdAt: "2025-05-27T22:30:00Z",
-    //         completedAt: "2025-05-27T23:00:00Z",
-    //         items: [
-    //             {
-    //                 id: "item-005",
-    //                 menuItem: {
-    //                     name: "蘿蔔糕套餐",
-    //                     price: 40,
-    //                 },
-    //                 quantity: 1,
-    //                 specialRequest: "",
-    //             },
-    //         ],
-    //     },
-    // ];
 
     useEffect(() => {
         const getOrders = async () => {
             try {
                 let user;
                 const sessionUser = sessionStorage.getItem("user");
-                console.log(sessionUser);
 
                 if (sessionUser) {
                     user = JSON.parse(sessionUser);
@@ -101,7 +23,6 @@ export default function OrdersPage() {
             }
         };
         getOrders();
-        // setOrders(ordersData);
     }, []);
 
     const getStatusColor = (status) => {

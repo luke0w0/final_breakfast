@@ -1,13 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { signIn } from "next-auth/react";
 
 export default function LoginPage() {
-    const router = useRouter();
     const [formData, setFormData] = useState({
         email: "",
         password: "",
@@ -66,57 +64,38 @@ export default function LoginPage() {
                         ⚠️ {error}
                     </div>
                 )}
-
-                <form onSubmit={handleLogin} className="space-y-5">
-                    <InputField
-                        label="電子信箱"
-                        name="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={handleChange}
-                    />
-                    <InputField
-                        label="密碼"
-                        name="password"
-                        type="password"
-                        value={formData.password}
-                        onChange={handleChange}
-                    />
-
-                    <button
-                        type="submit"
-                        disabled={isSubmitting}
-                        className="w-full bg-gradient-to-r from-pink-500 to-red-500 text-white font-bold py-2 rounded-lg hover:opacity-90 transition disabled:opacity-50 drop-shadow-md"
-                    >
-                        {isSubmitting ? "登入中..." : "登入"}
-                    </button>
-                </form>
-
                 <div className="mt-6 text-center">
-                    <button
-                        type="button"
-                        onClick={() => signIn("google")}
-                        className="w-full bg-white text-gray-800 border border-gray-300 py-2 px-4 rounded-md flex items-center justify-center gap-2 shadow hover:bg-gray-50 transition"
-                    >
-                        <Image
-                            src="/google.png"
-                            alt="Google"
-                            width={24}
-                            height={24}
-                        />
-                        使用 Google 登入
-                    </button>
+                    <form action="" className="space-y-3">
+                        <button
+                            type="submit"
+                            name="provider"
+                            value="google"
+                            className="w-full bg-white text-gray-800 border border-gray-300 py-2 px-4 rounded-md flex items-center justify-center gap-2 shadow hover:bg-gray-50 transition"
+                        >
+                            <Image
+                                src="/google.png"
+                                alt="Google"
+                                width={24}
+                                height={24}
+                            />
+                            使用 Google 登入
+                        </button>
+                        <button
+                            type="submit"
+                            name="provider"
+                            value="github"
+                            className="w-full bg-white text-gray-800 border border-gray-300 py-2 px-4 rounded-md flex items-center justify-center gap-2 shadow hover:bg-gray-50 transition"
+                        >
+                            <Image
+                                src="/github.png"
+                                alt="GitHub"
+                                width={24}
+                                height={24}
+                            />
+                            使用 GitHub 登入
+                        </button>
+                    </form>
                 </div>
-
-                <p className="mt-6 text-center text-sm text-gray-700">
-                    還沒有帳號？{" "}
-                    <Link
-                        href="/register"
-                        className="text-pink-700 underline font-semibold hover:text-gray-200"
-                    >
-                        立即註冊
-                    </Link>
-                </p>
             </div>
         </div>
     );

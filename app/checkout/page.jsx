@@ -17,39 +17,6 @@ export default function CheckoutPage() {
             setUser(JSON.parse(sessionUser));
         }
     }, []);
-    // const menusData = [
-    //     {
-    //         id: "item1",
-    //         name: "火腿蛋吐司",
-    //         price: 45,
-    //     },
-    //     {
-    //         id: "item2",
-    //         name: "培根總匯三明治",
-    //         price: 65,
-    //     },
-    //     {
-    //         id: "item3",
-    //         name: "奶茶（中）",
-    //         price: 30,
-    //     },
-    //     {
-    //         id: "item4",
-    //         name: "美式咖啡",
-    //         price: 40,
-    //     },
-    // ];
-
-    // const cartData = [
-    //     {
-    //         id: "item1",
-    //         quantity: 2,
-    //     },
-    //     {
-    //         id: "item4",
-    //         quantity: 1,
-    //     },
-    // ];
 
     useEffect(() => {
         const savedCart = sessionStorage.getItem("cart");
@@ -58,8 +25,6 @@ export default function CheckoutPage() {
         } else {
             window.location.href = "/";
         }
-
-        // setCart(cartData);
 
         const getMenuItems = async () => {
             try {
@@ -71,8 +36,6 @@ export default function CheckoutPage() {
             }
         };
         getMenuItems();
-
-        // setMenuItems(menusData);
     }, []);
 
     const getTotalPrice = () => {

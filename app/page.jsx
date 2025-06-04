@@ -12,6 +12,7 @@ export default function Home() {
                     alt="早餐訂餐系統 Logo"
                     width={172}
                     height={172}
+                    priority
                 />
 
                 <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">

@@ -15,12 +15,16 @@ export default function RestfulBadge({ type }) {
                 setBackgroundColor("#f7998e");
                 setText("DELETE");
                 return;
+            case "put":
+                setBackgroundColor("#fce47d");
+                setText("PUT");
+                return;
             case "patch":
                 setBackgroundColor("#c0a9e1");
                 setText("PATCH");
                 return;
             case "post":
-                setBackgroundColor("#fce47d");
+                setBackgroundColor("#cc8787");
                 setText("POST");
                 return;
             default:

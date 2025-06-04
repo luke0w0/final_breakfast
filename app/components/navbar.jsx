@@ -2,25 +2,28 @@
 
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
-import { useState } from "react";
+import {useEffect, useState} from "react";
 
 export default function Navbar() {
-    const [isLoginFromGoogle, setIsLoginFromGoogle] = useState(false);
-    const { data: session } = useSession();
+    const [user, setUser] = useState(null);
+    const { data: session, status } = useSession(); // status: "loading" | "authenticated" | "unauthenticated"
+    const [isLogin, setIsLogin] = useState(session?.user?.provider === "google" || session?.user?.provider === "github");
 
-    const oauthUser = session?.user;
-    const sessionUser = JSON.parse(sessionStorage.getItem("user"));
-    let user;
-    if (oauthUser) {
-        user = oauthUser;
-        setIsLoginFromGoogle(true);
-    } else if (sessionUser) {
-        user = sessionUser;
-    } else {
-    }
+    useEffect(() => {
+        if (status === "loading") return;
+
+        if (status === "authenticated" && session?.user) {
+            setUser(session.user);
+            setIsLogin(true);
+            sessionStorage.setItem("user", JSON.stringify(session.user));
+        } else {
+            const localUser = sessionStorage.getItem("user");
+            if (localUser) setUser(JSON.parse(localUser));
+        }
+    }, [session, status]);
 
     const getRoleLinks = () => {
-        if (!user) return [];
+        if (!user?.role) return [];
 
         switch (user.role) {
             case "CUSTOMER":
@@ -60,7 +63,9 @@ export default function Navbar() {
                 </Link>
 
                 <div className="flex flex-wrap items-center gap-4">
-                    {user ? (
+                    {status === "loading" ? (
+                        <span className="text-sm">載入中...</span>
+                    ) : user ? (
                         <>
                             {getRoleLinks().map((link) => (
                                 <Link
@@ -78,12 +83,10 @@ export default function Navbar() {
                             </span>
                             <button
                                 onClick={() => {
-                                    if (isLoginFromGoogle) {
-                                        signOut(); // 登出 Google 帳號
-                                    } else {
-                                        sessionStorage.removeItem("user");
-                                        window.location.href = "/login";
-                                    }
+                                    signOut({ callbackUrl: "/" });
+                                    sessionStorage.removeItem("user");
+                                    setUser(null);
+                                    setIsLogin(false);
                                 }}
                                 className="bg-white text-pink-600 font-semibold px-3 py-1.5 rounded-md hover:bg-gray-100 transition duration-300"
                                 aria-label="登出帳號"
