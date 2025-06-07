@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import useNotifications from "@/hooks/useNotifications";
-import useUser from "@/hooks/user";
+import useUser from "@/hooks/useUser";
 
 export default function NotifyButton() {
     const [showNotify, setShowNotify] = useState(false);
@@ -53,6 +53,16 @@ export default function NotifyButton() {
             alert("錯誤：", err);
         }
     };
+    const handleDeleteNotification = async (nId) => {
+        const response = await fetch(`/api/notifications/${nId}`, {
+            method: "DELETE",
+        });
+        if (!response.ok) {
+            alert("刪除通知失敗");
+            return;
+        }
+        setNotifications((prev) => prev.filter((n) => n.id !== nId));
+    };
     return (
         <div className="relative" ref={wrapperRef}>
             <button
@@ -77,8 +87,23 @@ export default function NotifyButton() {
                                     key={n.id}
                                     className="px-4 py-3 hover:bg-gray-100 transition"
                                 >
-                                    <div className="font-semibold text-gray-800">
-                                        {n.title}
+                                    <div className="font-semibold flex justify-between text-gray-800">
+                                        <p>{n.title}</p>
+                                        <button
+                                            onClick={() =>
+                                                handleDeleteNotification(n.id)
+                                            }
+                                            style={{
+                                                width: "32px",
+                                                height: "32px",
+                                                borderRadius: "50%",
+                                            }}
+                                            className="flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-gray-200 border border-gray-300 transition cursor-pointer shadow-sm"
+                                            aria-label="刪除通知"
+                                            title="刪除"
+                                        >
+                                            X
+                                        </button>
                                     </div>
                                     <div className="text-sm text-gray-800">
                                         {n.content}

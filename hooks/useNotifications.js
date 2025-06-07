@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import useUser from "./user";
+import useUser from "@/hooks/useUser";
 
 export default function useNotifications() {
     const { user, loading: userLoading } = useUser();

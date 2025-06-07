@@ -15,76 +15,40 @@ export default function AdminUsersPage() {
         OWNER: "老闆",
     };
 
-    const usersData = [
-        {
-            id: 1,
-            name: "林曉華",
-            email: "xiaohua@example.com",
-            role: "CUSTOMER",
-            isBanned: false,
-            createdAt: new Date("2024-12-01T10:30:00Z"),
-        },
-        {
-            id: 2,
-            name: "陳美娟",
-            email: "mei.chen@example.com",
-            role: "STAFF",
-            isBanned: true,
-            createdAt: new Date("2025-01-15T08:15:00Z"),
-        },
-        {
-            id: 3,
-            name: "張家豪",
-            email: "chahaocook@example.com",
-            role: "CHEF",
-            isBanned: false,
-            createdAt: new Date("2025-03-20T12:00:00Z"),
-        },
-        {
-            id: 4,
-            name: "王大明",
-            email: "daming.wang@example.com",
-            role: "OWNER",
-            isBanned: false,
-            createdAt: new Date("2025-02-10T09:45:00Z"),
-        }
-    ];
-
     useEffect(() => {
-        // fetch("/api/users")
-        //     .then((res) => res.json())
-        //     .then((data) => {
-        //         setUsers(data);
-        //         setLoading(false);
-        //     });
-
-        setUsers(usersData);
-        setLoading(false);
+        const getUsers = async () => {
+            const response = await fetch("/api/users");
+            if (!response.ok) {
+                alert("獲取使用者失敗");
+            }
+            const data = await response.json();
+            const formedData = data.map((item) => {
+                return {
+                    id: item.id,
+                    email: item.email,
+                    role: item.role,
+                    name: item.name,
+                    createdAt: new Date(item.createdAt).toLocaleString("sv"),
+                };
+            });
+            setUsers(formedData);
+            setLoading(false);
+        };
+        getUsers();
     }, []);
 
-    const handleRoleChange = async (id, newRole) => {
-        const res = await fetch(`/api/users/${id}/role`, {
-            method: "PUT",
+    const handleRoleChange = async (userId, newRole) => {
+        setUsers((prev) =>
+            prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
+        );
+        const response = await fetch(`/api/users/${userId}/role`, {
+            method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ role: newRole }),
         });
-        if (res.ok) {
-            setUsers((prev) =>
-                prev.map((u) => (u.id === id ? { ...u, role: newRole } : u))
-            );
-        }
-    };
-
-    const toggleBan = async (id) => {
-        const res = await fetch(`/api/users/${id}/ban`, {
-            method: "PATCH",
-        });
-        if (res.ok) {
-            setUsers((prev) =>
-                prev.map((u) =>
-                    u.id === id ? { ...u, isBanned: !u.isBanned } : u
-                )
-            );
+        if (!response.ok) {
+            alert("更改使用者權限失敗");
+            return;
         }
     };
 
@@ -95,7 +59,9 @@ export default function AdminUsersPage() {
     return (
         <div className="min-h-screen px-6 py-10 bg-gradient-to-br from-orange-100 via-pink-100 to-red-100">
             <div className="max-w-6xl mx-auto">
-                <h1 className="text-3xl font-bold text-gray-800 mb-6">👥 使用者管理</h1>
+                <h1 className="text-3xl font-bold text-gray-800 mb-6">
+                    👥 使用者管理
+                </h1>
 
                 <input
                     type="text"
@@ -128,35 +94,48 @@ export default function AdminUsersPage() {
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.3 }}
                             >
-                                <h3 className="text-lg font-bold text-gray-800 mb-2">{user.name}</h3>
-                                <p className="text-sm text-gray-600 mb-2">{user.email}</p>
+                                <h3 className="text-lg font-bold text-gray-800 mb-2">
+                                    {user.name}
+                                </h3>
+                                <p className="text-sm text-gray-600 mb-2">
+                                    {user.email}
+                                </p>
                                 <p className="text-xs text-gray-500 mb-2">
-                                    建立時間：{new Date(user.createdAt).toLocaleDateString()}
+                                    建立時間：
+                                    {new Date(
+                                        user.createdAt
+                                    ).toLocaleDateString()}
                                 </p>
 
-                                <label className="text-sm font-medium text-gray-700">角色</label>
+                                <label className="text-sm font-medium text-gray-700">
+                                    切換角色
+                                </label>
                                 <select
                                     value={user.role}
-                                    onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                                    className="block w-full mt-1 px-3 py-2 border rounded focus:outline-none focus:ring-pink-400"
+                                    onChange={(e) =>
+                                        handleRoleChange(
+                                            user.id,
+                                            e.target.value
+                                        )
+                                    }
+                                    className="block w-full mt-1 mb-4 px-3 py-2 border rounded focus:outline-none focus:ring-pink-400"
+                                    disabled={user.role === "OWNER"}
                                 >
-                                    {Object.entries(roleLabels).map(([key, label]) => (
-                                        <option key={key} value={key}>
-                                            {label}
-                                        </option>
-                                    ))}
+                                    <option value={user.role}>
+                                        {roleLabels[user.role] || user.role}
+                                    </option>
+                                    {Object.entries(roleLabels)
+                                        .filter(
+                                            ([key]) =>
+                                                key !== "OWNER" &&
+                                                key !== user.role
+                                        )
+                                        .map(([key, label]) => (
+                                            <option key={key} value={key}>
+                                                {label}
+                                            </option>
+                                        ))}
                                 </select>
-
-                                <button
-                                    onClick={() => toggleBan(user.id)}
-                                    className={`mt-4 w-full px-4 py-2 text-white rounded-md ${
-                                        user.isBanned
-                                            ? "bg-green-600 hover:bg-green-700"
-                                            : "bg-red-500 hover:bg-red-600"
-                                    } transition`}
-                                >
-                                    {user.isBanned ? "解除停權" : "停權用戶"}
-                                </button>
                             </motion.div>
                         ))}
                     </motion.div>

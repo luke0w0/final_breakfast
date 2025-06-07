@@ -15,11 +15,14 @@ export default function MenuManagementPage() {
     });
     const [editingId, setEditingId] = useState(null);
     const [editItem, setEditItem] = useState({});
+    const [imageFile, setImageFile] = useState(null);
+    const [imageUrl, setImageUrl] = useState("");
 
     useEffect(() => {
         const getMenu = async () => {
             const response = await fetch("/api/menu");
-            if (response.status !== 200) {
+            if (!response.ok) {
+                alert("取得菜單失敗");
                 return;
             }
             const data = await response.json();
@@ -30,7 +33,6 @@ export default function MenuManagementPage() {
 
     const handleCreate = async (e) => {
         e.preventDefault();
-
         try {
             const itemToSend = {
                 ...newItem,
@@ -64,6 +66,32 @@ export default function MenuManagementPage() {
         }
     };
 
+    const handleImageUpload = async () => {
+        if (!imageFile) return;
+
+        const formData = new FormData();
+        formData.append("file", imageFile);
+
+        try {
+            const response = await fetch("/api/image/upload", {
+                method: "POST",
+                body: formData,
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || "圖片上傳失敗");
+            }
+
+            setImageUrl(data.url);
+            setNewItem((prev) => ({ ...prev, imageUrl: data.url }));
+        } catch (err) {
+            console.error("圖片上傳失敗:", err.message);
+            return;
+        }
+    };
+
     const startEditing = (item) => {
         setEditingId(item.id);
         setEditItem({
@@ -75,14 +103,14 @@ export default function MenuManagementPage() {
         });
     };
 
-    const handleEdit = async (id) => {
+    const handleEdit = async (menuId) => {
         try {
             const updatedItemToSend = {
                 ...editItem,
                 price: parseFloat(editItem.price),
             };
 
-            const response = await fetch(`/api/menu/${id}`, {
+            const response = await fetch(`/api/menu/${menuId}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -97,7 +125,7 @@ export default function MenuManagementPage() {
             const updatedItem = await response.json();
 
             setMenuItems((prev) =>
-                prev.map((item) => (item.id === id ? updatedItem : item))
+                prev.map((item) => (item.id === menuId ? updatedItem : item))
             );
             setEditingId(null);
         } catch (error) {
@@ -118,7 +146,11 @@ export default function MenuManagementPage() {
                         🍱 菜單管理
                     </h1>
                     <button
-                        onClick={() => setIsCreating(true)}
+                        onClick={() => {
+                            setImageFile(null);
+                            setImageUrl("");
+                            setIsCreating(true);
+                        }}
                         className="bg-gradient-to-r from-pink-500 to-red-500 text-white px-6 py-2 rounded-md shadow hover:opacity-90 transition w-full sm:w-auto"
                     >
                         新增菜單
@@ -185,21 +217,58 @@ export default function MenuManagementPage() {
                             </div>
 
                             <div className="md:col-span-2">
-                                <label className="block mb-1 text-sm font-medium text-gray-700">
-                                    圖片 URL
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    圖片上傳
                                 </label>
-                                <input
-                                    type="text"
-                                    value={newItem.imageUrl}
-                                    onChange={(e) =>
-                                        setNewItem({
-                                            ...newItem,
-                                            imageUrl: e.target.value,
-                                        })
-                                    }
-                                    className="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-pink-400"
-                                />
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) =>
+                                            setImageFile(e.target.files[0])
+                                        }
+                                        className="flex-1 text-sm text-gray-700 file:mr-4 file:py-2 file:px-4
+                                                   file:rounded-full file:border-0
+                                                   file:text-sm file:font-semibold
+                                                   file:bg-blue-50 file:text-blue-700
+                                                   hover:file:bg-blue-100"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={handleImageUpload}
+                                        disabled={!imageFile}
+                                        className={`px-4 py-2 text-white rounded transition
+                                        ${
+                                            imageFile
+                                                ? "bg-blue-600 hover:bg-blue-700"
+                                                : "bg-gray-400 cursor-not-allowed"
+                                        }`}
+                                    >
+                                        上傳圖片
+                                    </button>
+                                </div>
                             </div>
+
+                            {imageUrl && (
+                                <div className="mt-4">
+                                    <p className="text-sm text-gray-600">
+                                        圖片預覽：
+                                    </p>
+                                    <Image
+                                        src={imageUrl}
+                                        width={400}
+                                        height={300}
+                                        alt="預覽"
+                                        className="mt-2 w-full max-h-64 object-contain rounded-lg border"
+                                    />
+                                    <input
+                                        type="text"
+                                        className="mt-2 w-full border px-3 py-2 rounded bg-gray-50"
+                                        value={imageUrl}
+                                        readOnly
+                                    />
+                                </div>
+                            )}
 
                             <div className="flex flex-col sm:flex-row gap-4 md:col-span-2">
                                 <button
@@ -222,8 +291,7 @@ export default function MenuManagementPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {menuItems.map((item) =>
-                        editingId === item.id ? (
-                            // 編輯模式的表單
+                        editingId === item.id ? ( // 編輯模式的表單
                             <div
                                 key={item.id}
                                 className="bg-white rounded-xl shadow-lg p-5 relative"
@@ -309,7 +377,7 @@ export default function MenuManagementPage() {
                                                 setEditItem({
                                                     ...editItem,
                                                     isAvailable:
-                                                        e.target.checked,
+                                                    e.target.checked,
                                                 })
                                             }
                                         />
@@ -331,20 +399,26 @@ export default function MenuManagementPage() {
                                         </button>
                                     </div>
                                 </form>
-                            </div>
+                            </div> // 顯示模式的菜單卡片
                         ) : (
-                            // 顯示模式的菜單卡片
                             <div
                                 key={item.id}
                                 className="bg-white rounded-xl shadow-lg p-5 hover:shadow-xl transition relative"
                             >
-                                <Image
-                                    src={item.imageUrl}
-                                    alt={item.name}
-                                    width={400}
-                                    height={250}
-                                    className="rounded-md w-full h-48 object-cover mb-4"
-                                />
+                                {item.imageUrl ? (
+                                    <Image
+                                        src={item.imageUrl}
+                                        alt={item.name}
+                                        width={400}
+                                        height={250}
+                                        className="rounded-md w-full h-48 object-cover mb-4"
+                                    />
+                                ) : (
+                                    <div className="flex justify-center items-center rounded-md w-full h-48 object-cover mb-4">
+                                        無圖片
+                                    </div>
+                                )}
+
                                 <h3 className="text-lg font-bold text-gray-800 mb-1">
                                     {item.name}
                                 </h3>

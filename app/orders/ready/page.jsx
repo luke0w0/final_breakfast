@@ -2,41 +2,53 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import useUser from "@/hooks/useUser";
 
 export default function ReadyOrdersPage() {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
+    const { user, loading: userLoading } = useUser();
 
     useEffect(() => {
-        setTimeout(() => {
-            setOrders([
-                {
-                    id: 101,
-                    customerName: "陳小美",
-                    items: ["總匯三明治", "豆漿"],
-                    pickupTime: "2025-05-28 08:30",
-                },
-                {
-                    id: 102,
-                    customerName: "張家豪",
-                    items: ["漢堡", "奶茶"],
-                    pickupTime: "2025-05-28 08:45",
-                },
-                {
-                    id: 103,
-                    customerName: "林曉恩",
-                    items: ["培根蛋餅", "紅茶"],
-                    pickupTime: "2025-05-28 09:00",
-                },
-            ]);
-            setLoading(false);
-        }, 800);
-    }, []);
-
+        if (userLoading) {
+            return;
+        }
+        const getReadyOrders = async () => {
+            try {
+                const response = await fetch(
+                    `/api/orders/ready?userId=${user.id}`
+                );
+                if (!response.ok) {
+                    alert("獲取完成訂單失敗");
+                    return;
+                }
+                const data = await response.json();
+                setOrders(data);
+                setLoading(false);
+            } catch (err) {
+                alert(err);
+            }
+        };
+        getReadyOrders();
+    }, [userLoading]);
+    const handleCompleteButton = async (orderId) => {
+        const response = await fetch(`/api/orders/${orderId}/status`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "COMPLETED" }),
+        });
+        if (!response.ok) {
+            alert("修改訂單狀態失敗");
+            return;
+        }
+        setOrders(orders.filter((o) => o.id !== orderId));
+    };
     return (
         <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-pink-50 to-red-50 py-10 px-6">
             <div className="max-w-5xl mx-auto">
-                <h1 className="text-3xl font-bold text-gray-800 mb-8">🍱 完成的訂單</h1>
+                <h1 className="text-3xl font-bold text-gray-800 mb-8">
+                    🍱 完成的訂單
+                </h1>
 
                 {loading ? (
                     <div className="space-y-4">
@@ -71,17 +83,26 @@ export default function ReadyOrdersPage() {
                                 <p className="text-gray-800 font-medium mb-1">
                                     顧客：{order.customerName}
                                 </p>
-                                <ul className="text-sm text-gray-600 list-disc pl-5 mb-2">
+                                <ul className="text-sm list-disc pl-5 mb-2 space-y-1">
                                     {order.items.map((item, idx) => (
-                                        <li key={idx}>{item}</li>
+                                        <li key={idx}>
+                                            {item.menuItem.name}
+
+                                            <p className="text-xs text-gray-500 ml-4">
+                                                備註：{item.specialRequest}
+                                            </p>
+                                        </li>
                                     ))}
                                 </ul>
+
                                 <p className="text-xs text-gray-500">
-                                    預計取餐時間：{order.pickupTime}
+                                    訂單建立時間：{order.createdAt}
                                 </p>
                                 <button
                                     className="mt-4 w-full bg-green-500 hover:bg-green-600 text-white py-2 rounded-md font-semibold transition"
-                                    onClick={() => alert(`確認訂單 ${order.id} 已交付`)}
+                                    onClick={() => {
+                                        handleCompleteButton(order.id);
+                                    }}
                                 >
                                     ✅ 已交付
                                 </button>

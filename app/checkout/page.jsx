@@ -1,16 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 // import { createOrder } from "@/app/orders/actions";
 
 export default function CheckoutPage() {
-    const router = useRouter();
     const [cart, setCart] = useState([]);
     const [menuItems, setMenuItems] = useState([]);
     const [specialRequests, setSpecialRequests] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [user, setUser] = useState({});
+
     useEffect(() => {
         const sessionUser = sessionStorage.getItem("user");
         if (sessionUser) {
@@ -45,7 +44,7 @@ export default function CheckoutPage() {
         }, 0);
     };
 
-    const handleSubmit = async (e) => {
+    const handleSubmitOrder = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
         try {
@@ -54,18 +53,24 @@ export default function CheckoutPage() {
                 quantity: item.quantity,
                 specialRequest: specialRequests[item.id] || "",
             }));
-            await fetch(`/api/orders/${user.id}`, {
+            const customerId = user.id;
+            const response = await fetch(`/api/orders`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     orderItems,
+                    customerId,
                 }),
             });
+            if (!response.ok) {
+                alert("送出訂單失敗");
+            }
+
             sessionStorage.removeItem("cart");
             window.location.href = "/orders";
         } catch (err) {
             console.error("下單失敗：", err);
-            alert("下單失敗，請稍後再試！");
+            alert("下單失敗");
         } finally {
             setIsSubmitting(false);
         }
@@ -83,7 +88,7 @@ export default function CheckoutPage() {
                 </div>
             ) : (
                 <form
-                    onSubmit={handleSubmit}
+                    onSubmit={handleSubmitOrder}
                     className="max-w-2xl mx-auto bg-white shadow-lg rounded-xl p-6 space-y-6"
                 >
                     <h2 className="text-xl font-semibold text-gray-700">
@@ -135,7 +140,7 @@ export default function CheckoutPage() {
                                                 setSpecialRequests((prev) => ({
                                                     ...prev,
                                                     [cartItem.id]:
-                                                        e.target.value,
+                                                    e.target.value,
                                                 }))
                                             }
                                         />
