@@ -44,12 +44,8 @@ export default function useNotifications() {
         return () => clearTimeout(timeout);
     }, [user, userLoading]);
     const notificationSetter = (notifications) => {
-        console.log(notifications);
-
         setNotifications(notifications);
         const unreadCount = notifications.filter((n) => n.read == false).length;
-        // console.log(notifications.filter((n) => n.read == false));
-        //
 
         setUnreadCount(unreadCount);
     };
