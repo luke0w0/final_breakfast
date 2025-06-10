@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-// import { createOrder } from "@/app/orders/actions";
+import { useMqttClient } from "@/hooks/useMqttClient";
 
 export default function CheckoutPage() {
     const [cart, setCart] = useState([]);
@@ -9,6 +9,9 @@ export default function CheckoutPage() {
     const [specialRequests, setSpecialRequests] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [user, setUser] = useState({});
+    const [topic, setTopic] = useState("");
+
+    const { publishMessage } = useMqttClient({});
 
     useEffect(() => {
         const sessionUser = sessionStorage.getItem("user");
@@ -18,6 +21,9 @@ export default function CheckoutPage() {
     }, []);
 
     useEffect(() => {
+        // TODO: 根據實際需求設定 MQTT Topic
+        setTopic(null);
+
         const savedCart = sessionStorage.getItem("cart");
         if (savedCart) {
             setCart(JSON.parse(savedCart));
@@ -65,6 +71,9 @@ export default function CheckoutPage() {
             if (!response.ok) {
                 alert("送出訂單失敗");
             }
+
+            // TODO: 發布 MQTT 訊息
+            const orderData = await response.json();
 
             sessionStorage.removeItem("cart");
             window.location.href = "/orders";

@@ -3,26 +3,35 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import useUser from "@/hooks/useUser";
+import {useMqttClient} from "@/hooks/useMqttClient";
 
 export default function ReadyOrdersPage() {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const { user, loading: userLoading } = useUser();
+    const [topic, setTopic] = useState("");
+
+    const { messages, publishMessage } = useMqttClient({
+        subscribeTopics: topic ? [topic] : [],
+    });
 
     useEffect(() => {
         if (userLoading) {
             return;
         }
+
+        // TODO: 設定 MQTT 主題
+        setTopic("");
+
         const getReadyOrders = async () => {
             try {
-                const response = await fetch(
-                    `/api/orders/ready?userId=${user.id}`
-                );
+                const response = await fetch(`/api/orders/ready`);
                 if (!response.ok) {
                     alert("獲取完成訂單失敗");
                     return;
                 }
                 const data = await response.json();
+
                 setOrders(data);
                 setLoading(false);
             } catch (err) {
@@ -31,6 +40,29 @@ export default function ReadyOrdersPage() {
         };
         getReadyOrders();
     }, [userLoading]);
+
+    // 當接收到 MQTT 訊息時，更新訂單列表
+    useEffect(() => {
+        if (messages.length === 0) return;
+
+        const lastMessage = messages[messages.length - 1];
+
+        try{
+            const newOrder = JSON.parse(lastMessage.payload);
+
+            setOrders((prev) => {
+                // 檢查是否已存在相同 ID 的訂單
+                const exists = prev.some((order) => order.id === newOrder.id);
+                return exists ? prev : [...prev, {
+                    ...newOrder,
+                    id: newOrder.orderId || newOrder.id,
+                }];
+            });
+        }catch (err) {
+            console.error("無法解析 MQTT 訊息:", err);
+        }
+    }, [messages]);
+
     const handleCompleteButton = async (orderId) => {
         const response = await fetch(`/api/orders/${orderId}/status`, {
             method: "PATCH",
@@ -42,7 +74,23 @@ export default function ReadyOrdersPage() {
             return;
         }
         setOrders(orders.filter((o) => o.id !== orderId));
+
+        const orderRes = await fetch(`/api/orders/${orderId}`);
+        if (!orderRes.ok) {
+            alert("獲取訂單詳情失敗");
+            return;
+        }
+        const orderData = await orderRes.json();
+
+        // 取出訂單的顧客 ID
+        const customerId = orderData.customer?.id;
+
+        const topic = ""; // TODO: 設定 MQTT 主題
+        // TODO: 準備發布交易完成的 MQTT 訊息
+
+        // TODO: 發布交易完成的 MQTT 訊息
     };
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-pink-50 to-red-50 py-10 px-6">
             <div className="max-w-5xl mx-auto">
@@ -78,10 +126,10 @@ export default function ReadyOrdersPage() {
                                 transition={{ duration: 0.3 }}
                             >
                                 <h2 className="text-xl font-bold text-pink-600 mb-2">
-                                    訂單 #{order.id}
+                                    訂單 #{order.id.slice(0, 8)}
                                 </h2>
                                 <p className="text-gray-800 font-medium mb-1">
-                                    顧客：{order.customerName}
+                                    顧客：{order.customer?.name}
                                 </p>
                                 <ul className="text-sm list-disc pl-5 mb-2 space-y-1">
                                     {order.items.map((item, idx) => (
@@ -101,7 +149,7 @@ export default function ReadyOrdersPage() {
                                 <button
                                     className="mt-4 w-full bg-green-500 hover:bg-green-600 text-white py-2 rounded-md font-semibold transition"
                                     onClick={() => {
-                                        handleCompleteButton(order.id);
+                                        handleCompleteButton(order.orderId || order.id);
                                     }}
                                 >
                                     ✅ 已交付

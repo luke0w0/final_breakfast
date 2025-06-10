@@ -1,28 +1,28 @@
 "use client";
 
 import { useEffect, useState } from "react";
-// import { updateOrderStatus, confirmPayment } from "@/app/orders/actions";
+import { useMqttClient } from "@/hooks/useMqttClient";
 
 export default function PendingOrdersPage() {
     const [orders, setOrders] = useState([]);
+    // 顧客下單的
+    const [topic, setTopic] = useState();
+
+    const { messages, publishMessage } = useMqttClient({
+        subscribeTopics: topic ? [topic] : [],
+    });
 
     useEffect(() => {
+        // TODO: 設定 MQTT 主題
+        setTopic(null);
+
         const getPendingOrders = async () => {
             try {
-                let user;
-                const sessionUser = sessionStorage.getItem("user");
-                if (sessionUser) {
-                    user = JSON.parse(sessionUser);
-                }
-                if (user.role !== "STAFF") {
-                    console.log(user);
-
-                    // window.location.href = "/";
+                const response = await fetch(`/api/orders/pending`);
+                if (!response.ok) {
+                    alert("獲取待處理訂單失敗");
                     return;
                 }
-                const response = await fetch(
-                    `/api/orders/pending?userId=${user.id}`
-                );
                 const data = await response.json();
                 setOrders(data);
             } catch (err) {
@@ -32,39 +32,75 @@ export default function PendingOrdersPage() {
         getPendingOrders();
     }, []);
 
-    const handleStatusChange = async (orderId, status) => {
+    // 當收到 MQTT 訊息時，更新訂單狀態
+    useEffect(() => {
+        if (messages.length === 0) return;
+
+        const lastMessage = messages[messages.length - 1];
+
         try {
-            await fetch("/api/orders/update-status", {
+            const newOrder = JSON.parse(lastMessage.payload);
+            setOrders((prev) => {
+                // 檢查是否已存在相同 ID 的訂單
+                const exists = prev.some((order) => order.id === newOrder.id);
+                return exists ? prev : [newOrder, ...prev];
+            });
+        } catch (err) {
+            console.error("無法解析 MQTT 訊息:", err);
+        }
+    }, [messages]);
+
+    const handleAcceptOrder = async (orderId) => {
+        try {
+            // 接受訂單
+            let response = await fetch(`/api/orders/${orderId}/status`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status: "PREPARING" }),
+            });
+            if (!response.ok) {
+                alert("修改訂單狀態失敗");
+                return;
+            }
+            setOrders((prev) => prev.filter((order) => order.id !== orderId));
+
+            // 傳送通知
+            const customerId = orders.find(
+                (order) => order.id === orderId
+            ).customerId;
+
+            response = await fetch(`/api/notifications/users/${customerId}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ orderId, status }),
+                body: JSON.stringify({
+                    orderId,
+                    message: `訂單 ${orderId.slice(0, 8)} 正在製作中`,
+                }),
             });
 
-            // 從列表中移除或更新狀態
-            setOrders((prev) => prev.filter((order) => order.id !== orderId));
+            // MQTT
+            // 接受訂單，傳送通知給使用者
+            const topic = ""; // TODO: 設定 MQTT 主題
+            const notificationRes = await response.json();
+
+            if (notificationRes && notificationRes.id) {
+                // TODO: 準備 MQTT 訊息
+
+                // TODO: 發布 MQTT 訊息(通知)
+            }
+
+            // 發布訂單資料到廚房
+            const kitchenTopic = ""; // TODO: 設定 MQTT 主題
+            // TODO: 準備廚房訂單資料
+
+            // TODO: 發布廚房訂單資料到 MQTT
+
+            if (!response.ok) {
+                alert("傳送通知失敗");
+                return;
+            }
         } catch (error) {
             console.error("Failed to update order status:", error);
-        }
-    };
-
-    const handlePaymentConfirm = async (orderId) => {
-        try {
-            await fetch("/api/orders/confirm-payment", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ orderId }),
-            });
-
-            // 更新前端訂單狀態
-            setOrders((prev) =>
-                prev.map((order) =>
-                    order.id === orderId
-                        ? { ...order, paymentStatus: true }
-                        : order
-                )
-            );
-        } catch (error) {
-            console.error("Failed to confirm payment:", error);
         }
     };
 
@@ -81,9 +117,9 @@ export default function PendingOrdersPage() {
                     </p>
                 ) : (
                     <div className="space-y-6">
-                        {orders.map((order) => (
+                        {orders.map((order, idx) => (
                             <div
-                                key={order.id}
+                                key={`${order.id}-${idx}`}
                                 className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition"
                             >
                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
@@ -97,17 +133,7 @@ export default function PendingOrdersPage() {
                                             ).toLocaleString()}
                                         </p>
                                     </div>
-                                    <span
-                                        className={`mt-2 sm:mt-0 px-3 py-1 rounded-full text-xs font-medium ${
-                                            order.paymentStatus
-                                                ? "bg-green-100 text-green-800"
-                                                : "bg-red-100 text-red-800"
-                                        }`}
-                                    >
-                                        {order.paymentStatus
-                                            ? "已付款"
-                                            : "未付款"}
-                                    </span>
+                                    <div></div>
                                 </div>
 
                                 <div className="mb-3 space-y-1">
@@ -126,9 +152,9 @@ export default function PendingOrdersPage() {
                                         餐點內容：
                                     </h4>
                                     <ul className="space-y-2">
-                                        {order.items.map((item) => (
+                                        {order.items.map((item, idx) => (
                                             <li
-                                                key={item.id}
+                                                key={`${item.id}-${idx}`}
                                                 className="flex justify-between text-sm text-gray-600"
                                             >
                                                 <span>
@@ -155,28 +181,17 @@ export default function PendingOrdersPage() {
                                     </ul>
                                 </div>
 
-                                <div className="mt-6 flex flex-col sm:flex-row justify-between gap-3">
-                                    {!order.paymentStatus && (
+                                <div className="mt-6 flex flex-col sm:flex-row justify-end gap-3">
+                                    {order.status === "PENDING" && (
                                         <button
                                             onClick={() =>
-                                                handlePaymentConfirm(order.id)
+                                                handleAcceptOrder(order.id)
                                             }
-                                            className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition"
+                                            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition"
                                         >
-                                            確認付款
+                                            接受訂單
                                         </button>
                                     )}
-                                    <button
-                                        onClick={() =>
-                                            handleStatusChange(
-                                                order.id,
-                                                "PREPARING"
-                                            )
-                                        }
-                                        className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition"
-                                    >
-                                        標記為製作中
-                                    </button>
                                 </div>
                             </div>
                         ))}

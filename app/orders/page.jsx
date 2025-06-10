@@ -1,22 +1,31 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useMqttClient } from "@/hooks/useMqttClient";
 
 export default function OrdersPage() {
     const [orders, setOrders] = useState([]);
+    const [topic, setTopic] = useState("");
+    const { messages } = useMqttClient({
+        subscribeTopics: topic ? [topic] : [],
+    });
 
     useEffect(() => {
         const getOrders = async () => {
             try {
                 let user;
                 const sessionUser = sessionStorage.getItem("user");
-
                 if (sessionUser) {
                     user = JSON.parse(sessionUser);
+
+                    // TODO: 設定訂閱的 MQTT 主題
+                    setTopic("");
                 }
-                const response = await fetch(`/api/orders/${user.id}`);
+                const response = await fetch(
+                    `/api/orders/customers/${user.id}`
+                );
                 const data = await response.json();
+
                 setOrders(data);
             } catch (err) {
                 console.error(err);
@@ -25,6 +34,40 @@ export default function OrdersPage() {
         getOrders();
     }, []);
 
+    // 當收到 MQTT 訊息時，更新訂單狀態
+    useEffect(() => {
+        if (messages.length === 0) return;
+
+        const lastMessage = messages[messages.length - 1];
+
+        const payload = JSON.parse(lastMessage.payload);
+
+        const status = payload.status;
+        const orderId = payload.orderId;
+
+        setOrders((prev) => {
+            return prev.map((order) =>
+                order.id === orderId ? { ...order, status } : order
+            );
+        });
+    }, [messages]);
+
+    const getStatusText = (status) => {
+        switch (status) {
+            case "PENDING":
+                return "店家未接單";
+            case "PREPARING":
+                return "餐點準備中";
+            case "READY":
+                return "餐點可領取";
+            case "COMPLETED":
+                return "交易完成";
+            case "CANCELLED":
+                return "交易取消";
+            default:
+                return "錯誤...";
+        }
+    };
     const getStatusColor = (status) => {
         switch (status) {
             case "PENDING":
@@ -41,7 +84,29 @@ export default function OrdersPage() {
                 return "bg-gray-100 text-gray-800";
         }
     };
-
+    const handleCancelOrderButton = async (orderId) => {
+        try {
+            const response = await fetch(`/api/orders/${orderId}/status`, {
+                method: "PATCH",
+                body: JSON.stringify({
+                    status: "CANCELLED",
+                }),
+            });
+            if (!response.ok) {
+                alert("訂單取消失敗");
+                return;
+            }
+            setOrders((prev) =>
+                prev.map((order) =>
+                    order.id !== orderId
+                        ? order
+                        : { ...order, status: "CANCELLED" }
+                )
+            );
+        } catch (error) {
+            console.error("訂單取消失敗:", error);
+        }
+    };
     return (
         <div className="min-h-screen bg-gradient-to-br from-orange-100 via-pink-100 to-red-100 px-4 sm:px-6 py-8">
             <div className="max-w-4xl mx-auto">
@@ -76,7 +141,7 @@ export default function OrdersPage() {
                                             order.status
                                         )}`}
                                     >
-                                        {order.status}
+                                        {getStatusText(order.status)}
                                     </span>
                                 </div>
 
@@ -84,18 +149,6 @@ export default function OrdersPage() {
                                     <p className="text-gray-700">
                                         <strong>總金額：</strong> $
                                         {order.totalAmount.toFixed(2)}
-                                    </p>
-                                    <p
-                                        className={
-                                            order.paymentStatus
-                                                ? "text-green-600"
-                                                : "text-red-600"
-                                        }
-                                    >
-                                        <strong>付款狀態：</strong>{" "}
-                                        {order.paymentStatus
-                                            ? "已付款"
-                                            : "未付款"}
                                     </p>
                                 </div>
 
@@ -132,18 +185,20 @@ export default function OrdersPage() {
                                         ))}
                                     </ul>
                                 </div>
-
-                                {order.status === "READY" &&
-                                    !order.completedAt && (
-                                        <div className="mt-4 text-center sm:text-right">
-                                            <Link
-                                                href={`/orders/${order.id}/complete`}
-                                                className="inline-block bg-gradient-to-r from-green-500 to-green-700 text-white px-5 py-2 rounded-md hover:opacity-90 transition"
-                                            >
-                                                確認取餐
-                                            </Link>
-                                        </div>
-                                    )}
+                                {order.status === "PENDING" && (
+                                    <div className="mt-4 text-center sm:text-right">
+                                        <button
+                                            onClick={() => {
+                                                handleCancelOrderButton(
+                                                    order.id
+                                                );
+                                            }}
+                                            className="inline-block bg-gradient-to-r from-red-400 to-red-600 text-white px-5 py-2 rounded-md hover:opacity-90 transition"
+                                        >
+                                            取消訂單
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>

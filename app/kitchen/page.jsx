@@ -1,14 +1,26 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useMqttClient } from "@/hooks/useMqttClient";
 
 export default function KitchenPage() {
     const [orders, setOrders] = useState([]);
+    const [topic, setTopic] = useState("");
+
+    const { messages, publishMessage } = useMqttClient({
+        subscribeTopics: topic ? [topic] : [],
+    });
 
     useEffect(() => {
+        // TODO: 根據實際需求設定 MQTT Topic
+        setTopic(null);
+
         const fetchOrders = async () => {
             try {
                 const res = await fetch("/api/orders/kitchen");
+                if (!res.ok) {
+                    throw new Error("伺服器回應錯誤");
+                }
                 const data = await res.json();
                 setOrders(data);
             } catch (err) {
@@ -18,12 +30,67 @@ export default function KitchenPage() {
         fetchOrders();
     }, []);
 
+    // 當收到新的 MQTT 訊息時更新訂單
+    useEffect(() => {
+        if (messages.length === 0) return;
+
+        const lastMessage = messages[messages.length - 1];
+        try {
+            const newOrder = JSON.parse(lastMessage.payload);
+
+            setOrders((prev) => {
+                // 檢查是否存在相同 ID 的訂單
+                const exists = prev.some((order) => order.id === newOrder.id);
+                return exists ? prev : [...prev, newOrder];
+            });
+        } catch (err) {
+            console.error("無法解析 MQTT 訊息:", err);
+        }
+    }, [messages]);
+
     const handleCompleteOrder = async (orderId) => {
         try {
-            await updateOrderStatus(orderId, "READY");
+            // 完成訂單
+            let response = await fetch(`/api/orders/${orderId}/status`, {
+                method: "PATCH",
+                body: JSON.stringify({
+                    status: "READY",
+                }),
+            });
+            if (!response.ok) {
+                alert("完成訂單失敗");
+                return;
+            }
             setOrders((prev) => prev.filter((order) => order.id !== orderId));
+
+            // 傳送通知
+            const customerId = orders.find(
+                (order) => order.id === orderId
+            ).customerId;
+
+            response = await fetch(`/api/notifications/users/${customerId}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    orderId,
+                    message: `可領取訂單 ${orderId.slice(0, 8)}`,
+                }),
+            });
+            if (!response.ok) {
+                alert("傳送通知失敗");
+                return;
+            }
+
+            const notificationRes = await response.json();
+
+            const readyNotificationTopic = getKitchenReadyOrderTopic(customerId);
+
+            // 準備要發布的 MQTT 訊息
+            if(notificationRes && notificationRes.id) {
+                // TODO: 準備要發布的訊息內容並發布 MQTT 訊息
+            }
         } catch (error) {
-            console.error("Failed to complete order:", error);
+            console.error("完成訂單失敗:", error);
         }
     };
 
@@ -39,9 +106,9 @@ export default function KitchenPage() {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {orders.map((order) => (
+                    {orders.map((order, idx) => (
                         <div
-                            key={order.id}
+                            key={`${order.id}-${idx}`}
                             className="bg-white rounded-2xl shadow-md hover:shadow-lg transition duration-200 p-6 border border-gray-100"
                         >
                             <div className="flex justify-between items-start mb-4">
@@ -55,33 +122,15 @@ export default function KitchenPage() {
                                         ).toLocaleString()}
                                     </p>
                                 </div>
-                                <span className="text-xs font-medium px-3 py-1 rounded-full bg-blue-100 text-blue-700">
-                                    {order.status}
-                                </span>
                             </div>
-
-                            <div className="mb-3 text-right text-sm text-gray-600">
-                                💰 NT$ {order.totalAmount.toFixed(2)}
-                            </div>
-
                             <div className="border-t pt-4">
-                                <h3 className="font-semibold text-gray-700 mb-2">
-                                    餐點明細
-                                </h3>
                                 <ul className="space-y-2 text-sm">
-                                    {order.items.map((item) => (
-                                        <li key={item.id}>
+                                    {order.items.map((item, idx) => (
+                                        <li key={`${item.id}-${idx}`}>
                                             <div className="flex justify-between items-start">
                                                 <span className="font-medium">
                                                     {item.menuItem.name} ×{" "}
                                                     {item.quantity}
-                                                </span>
-                                                <span className="text-gray-600">
-                                                    NT${" "}
-                                                    {(
-                                                        item.menuItem.price *
-                                                        item.quantity
-                                                    ).toFixed(2)}
                                                 </span>
                                             </div>
                                             {item.specialRequest && (
@@ -96,7 +145,7 @@ export default function KitchenPage() {
                             </div>
 
                             <button
-                                onClick={() => handleCompleteOrder(order.id)}
+                                onClick={() => handleCompleteOrder(order.orderId || order.id)}
                                 className="mt-5 w-full bg-green-600 text-white text-sm font-medium py-2 rounded-lg hover:bg-green-700 transition"
                             >
                                 ✅ 標記為已完成
