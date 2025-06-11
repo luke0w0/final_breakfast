@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import useNotifications from "@/hooks/useNotifications";
 import useUser from "@/hooks/useUser";
+import { deleteNotification } from "@/app/actions/notification";
 
 export default function NotifyButton() {
     const [showNotify, setShowNotify] = useState(false);
@@ -39,6 +40,7 @@ export default function NotifyButton() {
                 return { ...n, read: true };
             })
         );
+
         try {
             const response = await fetch(
                 `/api/notifications/users/${user.id}/isRead`,
@@ -54,14 +56,17 @@ export default function NotifyButton() {
         }
     };
     const handleDeleteNotification = async (nId) => {
-        const response = await fetch(`/api/notifications/${nId}`, {
-            method: "DELETE",
-        });
-        if (!response.ok) {
-            alert("刪除通知失敗");
-            return;
+        const data = await deleteNotification(nId);
+        if (!data) {
+            const response = await fetch(`/api/notifications/${nId}`, {
+                method: "DELETE",
+            });
+            if (!response.ok) {
+                alert("刪除通知失敗");
+                return;
+            }
         }
-        setNotifications((prev) => prev.filter((n) => n.id !== nId));
+        setNotifications(notifications.filter((n) => n.id !== nId));
     };
     return (
         <div className="relative" ref={wrapperRef}>

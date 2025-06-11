@@ -1,8 +1,6 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+## 網路早餐訂餐系統
 
-## Getting Started
-
-First, run the development server:
+此為 113-2 網路早餐訂餐系統的專案，使用 Next.js + Tailwind CSS + ShadCN UI + MQTT + Auth.js + Supabase & Prisma。
 
 ```bash
 npm run dev
@@ -14,23 +12,24 @@ pnpm dev
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+瀏覽器開啟 [http://localhost:3000](http://localhost:3000) 查看專案。
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## 查看詳細說明
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- 查看 README.md 及 [doc](http://localhost:3000/doc) 底下之說明文件。
+- 線上說明文件: [網路早餐訂餐系統](https://breakfast-order-website.vercel.app/doc)
 
-## Learn More
+## 部署至 Vercel
 
-To learn more about Next.js, take a look at the following resources:
+1. 前往 [Vercel](https://vercel.com/) 並登入。
+2. 點擊 "New Project"。
+3. 選擇 "Import Git Repository"。
+4. 選擇或輸入專案的 GitHub URL。
+5. 在環境變數中設定必要的變數，如 `NEXT_PUBLIC_SUPABASE_URL`、`NEXT_PUBLIC_SUPABASE_ANON_KEY` 等。
+6. 點擊 "Deploy" 按鈕。
+7. 等待部署完成後，您將獲得一個可存取的 URL。
+8. 在瀏覽器中打開該 URL，即可查看您的應用程式。
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 填寫 Google 表單
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+[上傳專案網址 Google 表單](https://docs.google.com/forms/d/e/1FAIpQLSd4cY9UM5ZZceGFWMYcbQsHRAXERdfVo4eBq3JGPsQu5qACSg/viewform)

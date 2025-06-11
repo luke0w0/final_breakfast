@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import useUser from "./useUser";
 import { useMqttClient } from "@/hooks/useMqttClient";
+import { getUserNotification } from "@/app/actions/notification";
 
 export default function useNotifications() {
     const { user, loading: userLoading } = useUser();
@@ -21,7 +22,7 @@ export default function useNotifications() {
             return;
         }
 
-        // TODO: 根據實際需求設定 MQTT Topic
+        // TODO: 根據實際需求設定 MQTT 主題
         setTopic(null);
 
         const timeout = setTimeout(async () => {
@@ -29,13 +30,19 @@ export default function useNotifications() {
             if (!userId) {
                 return;
             }
-            const response = await fetch(`/api/notifications/users/${userId}`);
-            if (!response.ok) {
-                console.error(response);
-                return;
+            // action
+            let data = await getUserNotification(userId);
+            if (!data) {
+                // api
+                const response = await fetch(
+                    `/api/notifications/users/${userId}`
+                );
+                if (!response.ok) {
+                    console.error("取得使用者通知失敗");
+                    return;
+                }
+                data = await response.json();
             }
-            const data = await response.json();
-
             const formedData = data.map((item) => {
                 return {
                     id: item.id,

@@ -2,37 +2,43 @@
 
 import { useEffect, useState } from "react";
 import { useMqttClient } from "@/hooks/useMqttClient";
+import useUser from "@/hooks/useUser";
+import { editOrderStatus, getCustomerOrder } from "@/app/actions/order";
 
 export default function OrdersPage() {
     const [orders, setOrders] = useState([]);
     const [topic, setTopic] = useState("");
-    const { messages } = useMqttClient({
+    const { user, loading } = useUser();
+
+    const { messages, publishMessage } = useMqttClient({
         subscribeTopics: topic ? [topic] : [],
     });
 
     useEffect(() => {
+        if (loading) {
+            return;
+        }
+        // TODO: 設定訂閱訂單狀態的 MQTT 主題
+        setTopic(null);
+
         const getOrders = async () => {
             try {
-                let user;
-                const sessionUser = sessionStorage.getItem("user");
-                if (sessionUser) {
-                    user = JSON.parse(sessionUser);
-
-                    // TODO: 設定訂閱的 MQTT 主題
-                    setTopic("");
+                // action
+                let data = await getCustomerOrder(user.id);
+                if (!data) {
+                    // api
+                    const response = await fetch(
+                        `/api/orders/customers/${user.id}`
+                    );
+                    data = await response.json();
                 }
-                const response = await fetch(
-                    `/api/orders/customers/${user.id}`
-                );
-                const data = await response.json();
-
                 setOrders(data);
             } catch (err) {
-                console.error(err);
+                alert("獲取顧客訂單失敗");
             }
         };
         getOrders();
-    }, []);
+    }, [loading]);
 
     // 當收到 MQTT 訊息時，更新訂單狀態
     useEffect(() => {
@@ -86,15 +92,25 @@ export default function OrdersPage() {
     };
     const handleCancelOrderButton = async (orderId) => {
         try {
-            const response = await fetch(`/api/orders/${orderId}/status`, {
-                method: "PATCH",
-                body: JSON.stringify({
+            // action
+            let data = await editOrderStatus(
+                {
                     status: "CANCELLED",
-                }),
-            });
-            if (!response.ok) {
-                alert("訂單取消失敗");
-                return;
+                },
+                orderId
+            );
+            if (!data) {
+                // api
+                const response = await fetch(`/api/orders/${orderId}/status`, {
+                    method: "PATCH",
+                    body: JSON.stringify({
+                        status: "CANCELLED",
+                    }),
+                });
+                if (!response.ok) {
+                    alert("訂單取消失敗");
+                    return;
+                }
             }
             setOrders((prev) =>
                 prev.map((order) =>
@@ -103,8 +119,14 @@ export default function OrdersPage() {
                         : { ...order, status: "CANCELLED" }
                 )
             );
+
+            // 發布訂單取消的 MQTT 訊息
+            const topic = ""; // TODO: 設定 MQTT 主題
+            // TODO: 準備訊息內容
+
+            // TODO: 發布 MQTT 訊息
         } catch (error) {
-            console.error("訂單取消失敗:", error);
+            alert("訂單取消失敗");
         }
     };
     return (

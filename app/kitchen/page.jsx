@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useMqttClient } from "@/hooks/useMqttClient";
+import { editOrderStatus, getKitchenOrders } from "@/app/actions/order";
+import { addNotification } from "@/app/actions/notification";
 
 export default function KitchenPage() {
     const [orders, setOrders] = useState([]);
@@ -12,19 +14,24 @@ export default function KitchenPage() {
     });
 
     useEffect(() => {
-        // TODO: 根據實際需求設定 MQTT Topic
+        // TODO: 設定廚房訂單的 MQTT 主題
         setTopic(null);
 
         const fetchOrders = async () => {
             try {
-                const res = await fetch("/api/orders/kitchen");
-                if (!res.ok) {
-                    throw new Error("伺服器回應錯誤");
+                let data = await getKitchenOrders();
+                if (!data) {
+                    const response = await fetch("/api/orders/kitchen");
+                    if (!response.ok) {
+                        alert("取得廚房訂單失敗");
+                        return;
+                    }
+                    data = await response.json();
                 }
-                const data = await res.json();
+
                 setOrders(data);
             } catch (err) {
-                console.error("無法載入訂單資料:", err);
+                alert("取得廚房訂單失敗");
             }
         };
         fetchOrders();
@@ -50,17 +57,28 @@ export default function KitchenPage() {
 
     const handleCompleteOrder = async (orderId) => {
         try {
-            // 完成訂單
-            let response = await fetch(`/api/orders/${orderId}/status`, {
-                method: "PATCH",
-                body: JSON.stringify({
+            // action
+            let data = await editOrderStatus(
+                {
                     status: "READY",
-                }),
-            });
-            if (!response.ok) {
-                alert("完成訂單失敗");
-                return;
+                },
+                orderId
+            );
+            let response;
+            if (!data) {
+                // api
+                response = await fetch(`/api/orders/${orderId}/status`, {
+                    method: "PATCH",
+                    body: JSON.stringify({
+                        status: "READY",
+                    }),
+                });
+                if (!response.ok) {
+                    alert("完成訂單失敗");
+                    return;
+                }
             }
+
             setOrders((prev) => prev.filter((order) => order.id !== orderId));
 
             // 傳送通知
@@ -68,26 +86,39 @@ export default function KitchenPage() {
                 (order) => order.id === orderId
             ).customerId;
 
-            response = await fetch(`/api/notifications/users/${customerId}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
+            let notificationRes = await addNotification(
+                {
                     orderId,
                     message: `可領取訂單 ${orderId.slice(0, 8)}`,
-                }),
-            });
-            if (!response.ok) {
-                alert("傳送通知失敗");
-                return;
+                },
+                customerId
+            );
+            if (!notificationRes) {
+                response = await fetch(
+                    `/api/notifications/users/${customerId}`,
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            orderId,
+                            message: `可領取訂單 ${orderId.slice(0, 8)}`,
+                        }),
+                    }
+                );
+                if (!response.ok) {
+                    alert("傳送通知失敗");
+                    return;
+                }
+                notificationRes = await response.json();
             }
 
-            const notificationRes = await response.json();
+            const readyNotificationTopic = ""; // TODO: 設定 MQTT 主題
 
-            const readyNotificationTopic = getKitchenReadyOrderTopic(customerId);
+            // 準備發布 MQTT 訊息
+            if (notificationRes && notificationRes.id) {
+                // TODO: 準備要發布的 MQTT 訊息
 
-            // 準備要發布的 MQTT 訊息
-            if(notificationRes && notificationRes.id) {
-                // TODO: 準備要發布的訊息內容並發布 MQTT 訊息
+                // TODO: 發布 MQTT 訊息
             }
         } catch (error) {
             console.error("完成訂單失敗:", error);
@@ -122,6 +153,9 @@ export default function KitchenPage() {
                                         ).toLocaleString()}
                                     </p>
                                 </div>
+                                {/* <span className="text-xs font-medium px-3 py-1 rounded-full bg-blue-100 text-blue-700">
+                                    {order.status}
+                                </span> */}
                             </div>
                             <div className="border-t pt-4">
                                 <ul className="space-y-2 text-sm">
@@ -145,7 +179,11 @@ export default function KitchenPage() {
                             </div>
 
                             <button
-                                onClick={() => handleCompleteOrder(order.orderId || order.id)}
+                                onClick={() =>
+                                    handleCompleteOrder(
+                                        order.orderId || order.id
+                                    )
+                                }
                                 className="mt-5 w-full bg-green-600 text-white text-sm font-medium py-2 rounded-lg hover:bg-green-700 transition"
                             >
                                 ✅ 標記為已完成

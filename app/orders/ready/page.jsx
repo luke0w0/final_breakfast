@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import useUser from "@/hooks/useUser";
-import {useMqttClient} from "@/hooks/useMqttClient";
+import { useMqttClient } from "@/hooks/useMqttClient";
+import { editOrderStatus, getOrderById, getReadyOrders } from "@/app/actions/order";
 
 export default function ReadyOrdersPage() {
     const [orders, setOrders] = useState([]);
@@ -21,24 +22,28 @@ export default function ReadyOrdersPage() {
         }
 
         // TODO: 設定 MQTT 主題
-        setTopic("");
+        setTopic(null);
 
-        const getReadyOrders = async () => {
+        const getOrders = async () => {
             try {
-                const response = await fetch(`/api/orders/ready`);
-                if (!response.ok) {
-                    alert("獲取完成訂單失敗");
-                    return;
+                // action
+                let data = await getReadyOrders();
+                if (!data) {
+                    // api
+                    const response = await fetch(`/api/orders/ready`);
+                    if (!response.ok) {
+                        alert("獲取完成訂單失敗");
+                        return;
+                    }
+                    data = await response.json();
                 }
-                const data = await response.json();
-
                 setOrders(data);
                 setLoading(false);
             } catch (err) {
-                alert(err);
+                alert("獲取完成訂單失敗");
             }
         };
-        getReadyOrders();
+        getOrders();
     }, [userLoading]);
 
     // 當接收到 MQTT 訊息時，更新訂單列表
@@ -47,45 +52,59 @@ export default function ReadyOrdersPage() {
 
         const lastMessage = messages[messages.length - 1];
 
-        try{
+        try {
             const newOrder = JSON.parse(lastMessage.payload);
 
             setOrders((prev) => {
                 // 檢查是否已存在相同 ID 的訂單
                 const exists = prev.some((order) => order.id === newOrder.id);
-                return exists ? prev : [...prev, {
-                    ...newOrder,
-                    id: newOrder.orderId || newOrder.id,
-                }];
+                return exists
+                    ? prev
+                    : [
+                        ...prev,
+                        {
+                            ...newOrder,
+                            id: newOrder.orderId || newOrder.id,
+                        },
+                    ];
             });
-        }catch (err) {
+        } catch (err) {
             console.error("無法解析 MQTT 訊息:", err);
         }
     }, [messages]);
 
     const handleCompleteButton = async (orderId) => {
-        const response = await fetch(`/api/orders/${orderId}/status`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ status: "COMPLETED" }),
-        });
-        if (!response.ok) {
-            alert("修改訂單狀態失敗");
-            return;
+        let data = await editOrderStatus({ status: "COMPLETED" }, orderId);
+        if (!data) {
+            const response = await fetch(`/api/orders/${orderId}/status`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status: "COMPLETED" }),
+            });
+            if (!response.ok) {
+                alert("修改訂單狀態失敗");
+                return;
+            }
         }
-        setOrders(orders.filter((o) => o.id !== orderId));
 
-        const orderRes = await fetch(`/api/orders/${orderId}`);
-        if (!orderRes.ok) {
-            alert("獲取訂單詳情失敗");
-            return;
+        setOrders(orders.filter((o) => o.id !== orderId));
+        // action
+        let orderData = await getOrderById(orderId);
+        if (!orderData) {
+            // api
+            const orderRes = await fetch(`/api/orders/${orderId}`);
+            if (!orderRes.ok) {
+                alert("獲取訂單詳情失敗");
+                return;
+            }
+            orderData = await orderRes.json();
         }
-        const orderData = await orderRes.json();
 
         // 取出訂單的顧客 ID
         const customerId = orderData.customer?.id;
 
-        const topic = ""; // TODO: 設定 MQTT 主題
+        // TODO: 設定 MQTT 主題
+        const topic = "";
         // TODO: 準備發布交易完成的 MQTT 訊息
 
         // TODO: 發布交易完成的 MQTT 訊息
@@ -149,7 +168,9 @@ export default function ReadyOrdersPage() {
                                 <button
                                     className="mt-4 w-full bg-green-500 hover:bg-green-600 text-white py-2 rounded-md font-semibold transition"
                                     onClick={() => {
-                                        handleCompleteButton(order.orderId || order.id);
+                                        handleCompleteButton(
+                                            order.orderId || order.id
+                                        );
                                     }}
                                 >
                                     ✅ 已交付

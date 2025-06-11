@@ -23,9 +23,7 @@ export default function ApiBlock({
     return (
         <div className="mb-20">
             <div className="text-2xl mb-4">{apiName}</div>
-            {apiDescription && (
-                <div className="mb-4">備註：{apiDescription}</div>
-            )}
+            {apiDescription && <div className="mb-4">{apiDescription}</div>}
             <RestfulBadge type={apiType} />
             <span className="mr-1" />
             <UrlBadge text={apiUrl} />

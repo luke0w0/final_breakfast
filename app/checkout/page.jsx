@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useMqttClient } from "@/hooks/useMqttClient";
+import { getMenuItems } from "@/app/actions/menu";
+import { addOrder } from "@/app/actions/order";
 
 export default function CheckoutPage() {
     const [cart, setCart] = useState([]);
@@ -21,7 +23,7 @@ export default function CheckoutPage() {
     }, []);
 
     useEffect(() => {
-        // TODO: 根據實際需求設定 MQTT Topic
+        // TODO: 根據實際需求設定 MQTT topic
         setTopic(null);
 
         const savedCart = sessionStorage.getItem("cart");
@@ -31,16 +33,20 @@ export default function CheckoutPage() {
             window.location.href = "/";
         }
 
-        const getMenuItems = async () => {
+        const getMenu = async () => {
             try {
-                const response = await fetch("/api/menu");
-                const data = await response.json();
+                // action
+                let data = await getMenuItems();
+                if (!data) {
+                    const response = await fetch("/api/menu");
+                    data = await response.json();
+                }
                 setMenuItems(data);
             } catch (err) {
-                console.error(err);
+                alert("取得菜單失敗");
             }
         };
-        getMenuItems();
+        getMenu();
     }, []);
 
     const getTotalPrice = () => {
@@ -60,26 +66,35 @@ export default function CheckoutPage() {
                 specialRequest: specialRequests[item.id] || "",
             }));
             const customerId = user.id;
-            const response = await fetch(`/api/orders`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    orderItems,
-                    customerId,
-                }),
+
+            // action
+            let orderData = await addOrder({
+                orderItems,
+                customerId,
             });
-            if (!response.ok) {
-                alert("送出訂單失敗");
+            if (!orderData) {
+                const response = await fetch(`/api/orders`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        orderItems,
+                        customerId,
+                    }),
+                });
+                if (!response.ok) {
+                    alert("送出訂單失敗");
+                    return;
+                }
+                orderData = await response.json();
             }
-
             // TODO: 發布 MQTT 訊息
-            const orderData = await response.json();
 
+            // 清空購物車
             sessionStorage.removeItem("cart");
+            // 回到訂單頁面
             window.location.href = "/orders";
         } catch (err) {
-            console.error("下單失敗：", err);
-            alert("下單失敗");
+            alert("送出訂單失敗");
         } finally {
             setIsSubmitting(false);
         }

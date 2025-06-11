@@ -2,34 +2,45 @@
 
 import { useEffect, useState } from "react";
 import { useMqttClient } from "@/hooks/useMqttClient";
+import { editOrderStatus, getPendingOrders } from "@/app/actions/order";
+import { addNotification } from "@/app/actions/notification";
 
 export default function PendingOrdersPage() {
     const [orders, setOrders] = useState([]);
     // 顧客下單的
-    const [topic, setTopic] = useState();
+    const [topics, setTopics] = useState([]);
 
     const { messages, publishMessage } = useMqttClient({
-        subscribeTopics: topic ? [topic] : [],
+        subscribeTopics: topics ? topics : [],
     });
 
     useEffect(() => {
-        // TODO: 設定 MQTT 主題
-        setTopic(null);
+        // 設定 MQTT 主題
+        const newTopics = [
+            // TODO: 顧客下單的 MQTT 主題
 
-        const getPendingOrders = async () => {
+            // TODO: 顧客取消訂單的 MQTT 主題
+        ];
+        setTopics(newTopics);
+
+        const getOrders = async () => {
             try {
-                const response = await fetch(`/api/orders/pending`);
-                if (!response.ok) {
-                    alert("獲取待處理訂單失敗");
-                    return;
+                // action
+                let data = await getPendingOrders();
+                if (!data) {
+                    const response = await fetch(`/api/orders/pending`);
+                    if (!response.ok) {
+                        alert("獲取待處理訂單失敗");
+                        return;
+                    }
+                    data = await response.json();
                 }
-                const data = await response.json();
                 setOrders(data);
             } catch (err) {
-                console.error(err);
+                alert("獲取待處理訂單失敗");
             }
         };
-        getPendingOrders();
+        getOrders();
     }, []);
 
     // 當收到 MQTT 訊息時，更新訂單狀態
@@ -37,30 +48,51 @@ export default function PendingOrdersPage() {
         if (messages.length === 0) return;
 
         const lastMessage = messages[messages.length - 1];
+        // 檢查是否為結帳訊息
+        const isCheckoutOrder = ""; // TODO: 檢查 MQTT 主題是否為結帳訂單的主題
+        // 檢查是否為取消訂單的訊息
+        const isCancelOrder = ""; // TODO: 檢查 MQTT 主題是否為取消訂單的主題
 
-        try {
-            const newOrder = JSON.parse(lastMessage.payload);
-            setOrders((prev) => {
-                // 檢查是否已存在相同 ID 的訂單
-                const exists = prev.some((order) => order.id === newOrder.id);
-                return exists ? prev : [newOrder, ...prev];
-            });
-        } catch (err) {
-            console.error("無法解析 MQTT 訊息:", err);
+        if(isCheckoutOrder) {
+            try {
+                const newOrder = JSON.parse(lastMessage.payload);
+                setOrders((prev) => {
+                    // 檢查是否已存在相同 ID 的訂單
+                    const exists = prev.some((order) => order.id === newOrder.id);
+                    return exists ? prev : [newOrder, ...prev];
+                });
+            } catch (err) {
+                console.error("無法解析 MQTT 訊息:", err);
+            }
+        }
+        if(isCancelOrder) {
+            try {
+                const payload = JSON.parse(lastMessage.payload);
+                const orderId = payload.orderId;
+                setOrders((prev) => prev.filter((order) => order.id !== orderId));
+            } catch (err) {
+                console.error("無法解析取消訂單的 MQTT 訊息:", err);
+            }
         }
     }, [messages]);
 
     const handleAcceptOrder = async (orderId) => {
         try {
-            // 接受訂單
-            let response = await fetch(`/api/orders/${orderId}/status`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ status: "PREPARING" }),
-            });
-            if (!response.ok) {
-                alert("修改訂單狀態失敗");
-                return;
+            let response;
+            // action
+            let data = await editOrderStatus({ status: "PREPARING" }, orderId);
+
+            if (!data) {
+                // api
+                response = await fetch(`/api/orders/${orderId}/status`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ status: "PREPARING" }),
+                });
+                if (!response.ok) {
+                    alert("修改訂單狀態失敗");
+                    return;
+                }
             }
             setOrders((prev) => prev.filter((order) => order.id !== orderId));
 
@@ -69,28 +101,45 @@ export default function PendingOrdersPage() {
                 (order) => order.id === orderId
             ).customerId;
 
-            response = await fetch(`/api/notifications/users/${customerId}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
+            // action
+            let notificationRes = await addNotification(
+                {
                     orderId,
                     message: `訂單 ${orderId.slice(0, 8)} 正在製作中`,
-                }),
-            });
+                },
+                customerId
+            );
+            if (!notificationRes) {
+                // api
+                response = await fetch(
+                    `/api/notifications/users/${customerId}`,
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            orderId,
+                            message: `訂單 ${orderId.slice(0, 8)} 正在製作中`,
+                        }),
+                    }
+                );
+                if (!response.ok) {
+                    alert("傳送通知失敗");
+                    return;
+                }
+                notificationRes = await response.json();
+            }
 
-            // MQTT
             // 接受訂單，傳送通知給使用者
             const topic = ""; // TODO: 設定 MQTT 主題
-            const notificationRes = await response.json();
-
             if (notificationRes && notificationRes.id) {
-                // TODO: 準備 MQTT 訊息
+                // TODO: 準備 MQTT 訊息內容
 
                 // TODO: 發布 MQTT 訊息(通知)
             }
 
             // 發布訂單資料到廚房
-            const kitchenTopic = ""; // TODO: 設定 MQTT 主題
+            const kitchenTopic = ""; // TODO: 設定廚房 MQTT 主題
+
             // TODO: 準備廚房訂單資料
 
             // TODO: 發布廚房訂單資料到 MQTT
