@@ -17,9 +17,8 @@ export default function PendingOrdersPage() {
     useEffect(() => {
         // 設定 MQTT 主題
         const newTopics = [
-            // TODO: 顧客下單的 MQTT 主題
-
-            // TODO: 顧客取消訂單的 MQTT 主題
+            getOrderCheckoutTopic(),
+            getCustomerCancelOrderTopic("#"),
         ];
         setTopics(newTopics);
 
@@ -49,27 +48,31 @@ export default function PendingOrdersPage() {
 
         const lastMessage = messages[messages.length - 1];
         // 檢查是否為結帳訊息
-        const isCheckoutOrder = ""; // TODO: 檢查 MQTT 主題是否為結帳訂單的主題
+        const isCheckoutOrder = lastMessage.topic.includes("checkout");
         // 檢查是否為取消訂單的訊息
-        const isCancelOrder = ""; // TODO: 檢查 MQTT 主題是否為取消訂單的主題
+        const isCancelOrder = lastMessage.topic.includes("cancel");
 
-        if(isCheckoutOrder) {
+        if (isCheckoutOrder) {
             try {
                 const newOrder = JSON.parse(lastMessage.payload);
                 setOrders((prev) => {
                     // 檢查是否已存在相同 ID 的訂單
-                    const exists = prev.some((order) => order.id === newOrder.id);
+                    const exists = prev.some(
+                        (order) => order.id === newOrder.id
+                    );
                     return exists ? prev : [newOrder, ...prev];
                 });
             } catch (err) {
                 console.error("無法解析 MQTT 訊息:", err);
             }
         }
-        if(isCancelOrder) {
+        if (isCancelOrder) {
             try {
                 const payload = JSON.parse(lastMessage.payload);
                 const orderId = payload.orderId;
-                setOrders((prev) => prev.filter((order) => order.id !== orderId));
+                setOrders((prev) =>
+                    prev.filter((order) => order.id !== orderId)
+                );
             } catch (err) {
                 console.error("無法解析取消訂單的 MQTT 訊息:", err);
             }
@@ -133,7 +136,6 @@ export default function PendingOrdersPage() {
             const topic = ""; // TODO: 設定 MQTT 主題
             if (notificationRes && notificationRes.id) {
                 // TODO: 準備 MQTT 訊息內容
-
                 // TODO: 發布 MQTT 訊息(通知)
             }
 

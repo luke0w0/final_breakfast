@@ -18,8 +18,7 @@ export default function OrdersPage() {
         if (loading) {
             return;
         }
-        // TODO: 設定訂閱訂單狀態的 MQTT 主題
-        setTopic(null);
+        setTopic(getKitchenReadyOrderTopic("#"));
 
         const getOrders = async () => {
             try {

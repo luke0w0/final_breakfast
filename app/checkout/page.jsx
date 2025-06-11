@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useMqttClient } from "@/hooks/useMqttClient";
 import { getMenuItems } from "@/app/actions/menu";
 import { addOrder } from "@/app/actions/order";
+import { getOrderCheckoutTopic } from "@/utils/mqttTopic";
 
 export default function CheckoutPage() {
     const [cart, setCart] = useState([]);
@@ -23,8 +24,7 @@ export default function CheckoutPage() {
     }, []);
 
     useEffect(() => {
-        // TODO: 根據實際需求設定 MQTT topic
-        setTopic(null);
+        setTopic(getOrderCheckoutTopic());
 
         const savedCart = sessionStorage.getItem("cart");
         if (savedCart) {
@@ -164,7 +164,7 @@ export default function CheckoutPage() {
                                                 setSpecialRequests((prev) => ({
                                                     ...prev,
                                                     [cartItem.id]:
-                                                    e.target.value,
+                                                        e.target.value,
                                                 }))
                                             }
                                         />

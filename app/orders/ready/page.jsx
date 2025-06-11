@@ -4,7 +4,11 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import useUser from "@/hooks/useUser";
 import { useMqttClient } from "@/hooks/useMqttClient";
-import { editOrderStatus, getOrderById, getReadyOrders } from "@/app/actions/order";
+import {
+    editOrderStatus,
+    getOrderById,
+    getReadyOrders,
+} from "@/app/actions/order";
 
 export default function ReadyOrdersPage() {
     const [orders, setOrders] = useState([]);
@@ -20,9 +24,7 @@ export default function ReadyOrdersPage() {
         if (userLoading) {
             return;
         }
-
-        // TODO: 設定 MQTT 主題
-        setTopic(null);
+        setTopic(getKitchenReadyOrderTopic("#"));
 
         const getOrders = async () => {
             try {
@@ -61,12 +63,12 @@ export default function ReadyOrdersPage() {
                 return exists
                     ? prev
                     : [
-                        ...prev,
-                        {
-                            ...newOrder,
-                            id: newOrder.orderId || newOrder.id,
-                        },
-                    ];
+                          ...prev,
+                          {
+                              ...newOrder,
+                              id: newOrder.orderId || newOrder.id,
+                          },
+                      ];
             });
         } catch (err) {
             console.error("無法解析 MQTT 訊息:", err);

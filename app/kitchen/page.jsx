@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useMqttClient } from "@/hooks/useMqttClient";
 import { editOrderStatus, getKitchenOrders } from "@/app/actions/order";
 import { addNotification } from "@/app/actions/notification";
+import { getKitchenOrderTopic } from "@/utils/mqttTopic";
 
 export default function KitchenPage() {
     const [orders, setOrders] = useState([]);
@@ -14,8 +15,7 @@ export default function KitchenPage() {
     });
 
     useEffect(() => {
-        // TODO: 設定廚房訂單的 MQTT 主題
-        setTopic(null);
+        setTopic(getKitchenOrderTopic());
 
         const fetchOrders = async () => {
             try {
@@ -117,7 +117,6 @@ export default function KitchenPage() {
             // 準備發布 MQTT 訊息
             if (notificationRes && notificationRes.id) {
                 // TODO: 準備要發布的 MQTT 訊息
-
                 // TODO: 發布 MQTT 訊息
             }
         } catch (error) {

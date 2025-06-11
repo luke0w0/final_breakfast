@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import useUser from "./useUser";
 import { useMqttClient } from "@/hooks/useMqttClient";
 import { getUserNotification } from "@/app/actions/notification";
+import { getOrderStatusWildcardTopic } from "@/utils/mqttTopic";
 
 export default function useNotifications() {
     const { user, loading: userLoading } = useUser();
@@ -22,8 +23,7 @@ export default function useNotifications() {
             return;
         }
 
-        // TODO: 根據實際需求設定 MQTT 主題
-        setTopic(null);
+        setTopic(getOrderStatusWildcardTopic(user.id));
 
         const timeout = setTimeout(async () => {
             const userId = user.id;
