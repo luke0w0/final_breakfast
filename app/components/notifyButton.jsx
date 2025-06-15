@@ -1,20 +1,21 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import useNotifications from "@/hooks/useNotifications";
+import { useNotifications } from "@/hooks/useNotifications";
 import useUser from "@/hooks/useUser";
 import { deleteNotification } from "@/app/actions/notification";
 
 export default function NotifyButton() {
     const [showNotify, setShowNotify] = useState(false);
     const { user, loading } = useUser();
-    const { notifications, unreadCount, setNotifications } = useNotifications();
+    const { notifications, unreadCount, setNotifications, refetch } = useNotifications();
     const wrapperRef = useRef(null);
 
     useEffect(() => {
         if (loading) {
             return;
         }
+
         const handleClickOutside = (event) => {
             if (
                 wrapperRef.current &&
@@ -23,51 +24,91 @@ export default function NotifyButton() {
                 setShowNotify(false);
             }
         };
+
         if (showNotify) {
             document.addEventListener("mousedown", handleClickOutside);
         } else {
             document.removeEventListener("mousedown", handleClickOutside);
         }
+
         return () => {
             document.removeEventListener("mousedown", handleClickOutside);
         };
     }, [showNotify, loading]);
 
-    const handelClickNotificationButton = async () => {
-        setShowNotify((prev) => !prev);
-        setNotifications(
-            notifications.map((n) => {
-                return { ...n, read: true };
-            })
-        );
+    // 當組件掛載或更新時重新獲取通知
+    useEffect(() => {
+        if (!loading) {
+            refetch();
+        }
+    }, [loading, refetch]);
 
-        try {
-            const response = await fetch(
-                `/api/notifications/users/${user.id}/isRead`,
-                {
-                    method: "PATCH",
+    const handelClickNotificationButton = async () => {
+        // 先顯示通知面板
+        setShowNotify(true);
+        
+        // 如果有未讀通知，則更新已讀狀態
+        if (notifications.length > 0 && unreadCount > 0) {
+            try {
+                const response = await fetch(
+                    `/api/notifications/users/${user.id}/isRead`,
+                    {
+                        method: "PATCH",
+                    }
+                );
+                if (!response.ok) {
+                    throw new Error("切換已讀通知失敗");
                 }
-            );
-            if (!response.ok) {
-                alert("切換已讀通知失敗");
+                
+                // 更新本地狀態
+                setNotifications(
+                    notifications.map((n) => ({
+                        ...n,
+                        isRead: true
+                    }))
+                );
+                
+                // 重新獲取通知列表
+                await refetch();
+            } catch (err) {
+                console.error("切換已讀通知錯誤:", err);
             }
-        } catch (err) {
-            alert("錯誤：", err);
         }
     };
+
     const handleDeleteNotification = async (nId) => {
-        const data = await deleteNotification(nId);
-        if (!data) {
+        try {
             const response = await fetch(`/api/notifications/${nId}`, {
                 method: "DELETE",
             });
+
             if (!response.ok) {
-                alert("刪除通知失敗");
-                return;
+                const error = await response.json();
+                throw new Error(error.error || "刪除通知失敗");
             }
+
+            // 從本地狀態中移除通知
+            setNotifications(notifications.filter((n) => n.id !== nId));
+            
+            // 重新獲取通知列表以更新未讀數量
+            await refetch();
+        } catch (error) {
+            console.error("刪除通知錯誤:", error);
+            alert(error.message);
         }
-        setNotifications(notifications.filter((n) => n.id !== nId));
     };
+
+    const formatTime = (dateString) => {
+        const date = new Date(dateString);
+        return date.toLocaleString('zh-TW', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
+
     return (
         <div className="relative" ref={wrapperRef}>
             <button
@@ -93,11 +134,9 @@ export default function NotifyButton() {
                                     className="px-4 py-3 hover:bg-gray-100 transition"
                                 >
                                     <div className="font-semibold flex justify-between text-gray-800">
-                                        <p>{n.title}</p>
+                                        <p className="whitespace-pre-wrap">{n.message}</p>
                                         <button
-                                            onClick={() =>
-                                                handleDeleteNotification(n.id)
-                                            }
+                                            onClick={() => handleDeleteNotification(n.id)}
                                             style={{
                                                 width: "32px",
                                                 height: "32px",
@@ -110,11 +149,8 @@ export default function NotifyButton() {
                                             X
                                         </button>
                                     </div>
-                                    <div className="text-sm text-gray-800">
-                                        {n.content}
-                                    </div>
-                                    <div className="text-xs text-gray-500">
-                                        {n.time}
+                                    <div className="text-xs text-gray-500 mt-1">
+                                        {formatTime(n.createdAt)}
                                     </div>
                                 </li>
                             ))}

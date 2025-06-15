@@ -1,96 +1,54 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import useUser from "./useUser";
-import { useMqttClient } from "@/hooks/useMqttClient";
-import { getUserNotification } from "@/app/actions/notification";
-import { getOrderStatusWildcardTopic } from "@/utils/mqttTopic";
+import { useState, useEffect, useCallback } from 'react';
+import { useSession } from 'next-auth/react';
 
-export default function useNotifications() {
-    const { user, loading: userLoading } = useUser();
+export const useNotifications = () => {
+    const { data: session } = useSession();
     const [notifications, setNotifications] = useState([]);
-    const [unreadCount, setUnreadCount] = useState(0);
     const [loading, setLoading] = useState(true);
-    const [topic, setTopic] = useState("");
+    const [error, setError] = useState(null);
 
-    const { messages } = useMqttClient({
-        subscribeTopics: topic ? [topic] : [],
-    });
+    const fetchNotifications = useCallback(async () => {
+        if (!session?.user?.id) return;
 
-    // 初始載入通知
-    useEffect(() => {
-        if (userLoading || !user.id) {
-            return;
-        }
-
-        setTopic(getOrderStatusWildcardTopic(user.id));
-
-        const timeout = setTimeout(async () => {
-            const userId = user.id;
-            if (!userId) {
-                return;
-            }
-            // action
-            let data = await getUserNotification(userId);
-            if (!data) {
-                // api
-                const response = await fetch(
-                    `/api/notifications/users/${userId}`
-                );
-                if (!response.ok) {
-                    console.error("取得使用者通知失敗");
-                    return;
-                }
-                data = await response.json();
-            }
-            const formedData = data.map((item) => {
-                return {
-                    id: item.id,
-                    title: "訂單",
-                    type: "order",
-                    content: item.message,
-                    read: item.isRead,
-                    time: new Date(item.createdAt).toLocaleString("sv"),
-                };
-            });
-            setNotifications(formedData);
-            setUnreadCount(formedData.filter((n) => !n.read).length);
-            setLoading(false);
-        }, 1000);
-
-        return () => clearTimeout(timeout);
-    }, [user, userLoading]);
-
-    // 當收到新的 MQTT 訊息時更新通知
-    useEffect(() => {
-        if (messages.length === 0) {
-            return;
-        }
         try {
-            const lastMessage = messages[messages.length - 1];
-            const newOrder = JSON.parse(lastMessage.payload);
-
-            setNotifications((prev) => {
-                return [newOrder, ...prev];
-            });
-            setUnreadCount((prev) => prev + 1);
+            setLoading(true);
+            setError(null);
+            const response = await fetch(`/api/notifications/users/${session.user.id}`);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            console.log('獲取到的通知:', data);
+            setNotifications(data);
         } catch (err) {
-            console.error("無法解析 MQTT 訊息:", err);
+            console.error('獲取通知失敗:', err);
+            setError(err.message);
+        } finally {
+            setLoading(false);
         }
-    }, [messages]);
+    }, [session?.user?.id]);
 
-    const notificationSetter = (notifications) => {
-        setNotifications(notifications);
-        const unreadCount = notifications.filter(
-            (n) => n.read === false
-        ).length;
-        setUnreadCount(unreadCount);
-    };
+    // 初始載入
+    useEffect(() => {
+        if (session?.user?.id) {
+            fetchNotifications();
+        }
+    }, [session?.user?.id, fetchNotifications]);
+
+    // 計算未讀通知數量
+    const unreadCount = notifications.filter(n => !n.isRead).length;
+    console.log('未讀通知數量:', unreadCount, '通知列表:', notifications);
 
     return {
         notifications,
-        setNotifications: notificationSetter,
-        unreadCount,
+        setNotifications,
         loading,
+        error,
+        unreadCount,
+        refetch: fetchNotifications
     };
-}
+};

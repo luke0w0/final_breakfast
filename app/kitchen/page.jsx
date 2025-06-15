@@ -1,22 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useMqttClient } from "@/hooks/useMqttClient";
 import { editOrderStatus, getKitchenOrders } from "@/app/actions/order";
 import { addNotification } from "@/app/actions/notification";
-import { getKitchenOrderTopic } from "@/utils/mqttTopic";
+import { subscribeToTopic, publishMessage } from "@/app/utils/mqtt";
 
 export default function KitchenPage() {
     const [orders, setOrders] = useState([]);
-    const [topic, setTopic] = useState("");
-
-    const { messages, publishMessage } = useMqttClient({
-        subscribeTopics: topic ? [topic] : [],
-    });
 
     useEffect(() => {
-        setTopic(getKitchenOrderTopic());
-
         const fetchOrders = async () => {
             try {
                 let data = await getKitchenOrders();
@@ -34,26 +26,28 @@ export default function KitchenPage() {
                 alert("取得廚房訂單失敗");
             }
         };
+
+        // 初始獲取訂單
         fetchOrders();
+
+        // 訂閱 MQTT 訊息
+        subscribeToTopic((message) => {
+            console.log("收到 MQTT 訊息:", message);
+            
+            // 處理新訂單
+            if (message.type === "NEW_ORDER" && message.status === "PENDING") {
+                console.log("收到新訂單通知，重新獲取訂單列表");
+                setTimeout(fetchOrders, 1000);
+            }
+            
+            // 處理訂單狀態更新
+            if (message.type === "ORDER_STATUS_UPDATE" && message.status === "PREPARING") {
+                console.log("收到訂單狀態更新通知，重新獲取訂單列表");
+                setTimeout(fetchOrders, 1000);
+            }
+        });
+        
     }, []);
-
-    // 當收到新的 MQTT 訊息時更新訂單
-    useEffect(() => {
-        if (messages.length === 0) return;
-
-        const lastMessage = messages[messages.length - 1];
-        try {
-            const newOrder = JSON.parse(lastMessage.payload);
-
-            setOrders((prev) => {
-                // 檢查是否存在相同 ID 的訂單
-                const exists = prev.some((order) => order.id === newOrder.id);
-                return exists ? prev : [...prev, newOrder];
-            });
-        } catch (err) {
-            console.error("無法解析 MQTT 訊息:", err);
-        }
-    }, [messages]);
 
     const handleCompleteOrder = async (orderId) => {
         try {
@@ -69,6 +63,7 @@ export default function KitchenPage() {
                 // api
                 response = await fetch(`/api/orders/${orderId}/status`, {
                     method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         status: "READY",
                     }),
@@ -77,19 +72,41 @@ export default function KitchenPage() {
                     alert("完成訂單失敗");
                     return;
                 }
+                data = await response.json();
+            }
+
+            // 發送 MQTT 通知
+            if (data) {
+                publishMessage({
+                    type: "ORDER_STATUS_UPDATE",
+                    orderId: orderId,
+                    status: "READY",
+                    timestamp: new Date().toISOString(),
+                    order: data
+                });
             }
 
             setOrders((prev) => prev.filter((order) => order.id !== orderId));
 
+            // 準備通知訊息
+            const order = orders.find((order) => order.id === orderId);
+            if (!order) return;
+
+            // 構建餐點內容字串
+            const itemsList = order.items.map(item => 
+                `${item.menuItem.name} × ${item.quantity}`
+            ).join('\n');
+
+            // 構建完整通知訊息
+            const notificationMessage = `您的餐點：\n${itemsList}\n總共：$${order.totalAmount.toFixed(2)}\n已製作完成請前往取餐`;
+
             // 傳送通知
-            const customerId = orders.find(
-                (order) => order.id === orderId
-            ).customerId;
+            const customerId = order.customerId;
 
             let notificationRes = await addNotification(
                 {
                     orderId,
-                    message: `可領取訂單 ${orderId.slice(0, 8)}`,
+                    message: notificationMessage,
                 },
                 customerId
             );
@@ -101,26 +118,40 @@ export default function KitchenPage() {
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                             orderId,
-                            message: `可領取訂單 ${orderId.slice(0, 8)}`,
+                            message: notificationMessage,
                         }),
                     }
                 );
                 if (!response.ok) {
-                    alert("傳送通知失敗");
+                    console.error("傳送通知失敗");
                     return;
                 }
-                notificationRes = await response.json();
             }
 
-            const readyNotificationTopic = ""; // TODO: 設定 MQTT 主題
+            // 發送 email
+            try {
+                const emailResponse = await fetch('/api/email', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        to: order.customer.email,
+                        subject: '您的餐點已準備完成',
+                        message: notificationMessage,
+                    }),
+                });
 
-            // 準備發布 MQTT 訊息
-            if (notificationRes && notificationRes.id) {
-                // TODO: 準備要發布的 MQTT 訊息
-                // TODO: 發布 MQTT 訊息
+                if (!emailResponse.ok) {
+                    console.error('發送 email 失敗');
+                }
+            } catch (emailError) {
+                console.error('發送 email 時發生錯誤:', emailError);
             }
+
         } catch (error) {
             console.error("完成訂單失敗:", error);
+            alert("完成訂單失敗：" + error.message);
         }
     };
 
@@ -152,9 +183,6 @@ export default function KitchenPage() {
                                         ).toLocaleString()}
                                     </p>
                                 </div>
-                                {/* <span className="text-xs font-medium px-3 py-1 rounded-full bg-blue-100 text-blue-700">
-                                    {order.status}
-                                </span> */}
                             </div>
                             <div className="border-t pt-4">
                                 <ul className="space-y-2 text-sm">
@@ -178,11 +206,7 @@ export default function KitchenPage() {
                             </div>
 
                             <button
-                                onClick={() =>
-                                    handleCompleteOrder(
-                                        order.orderId || order.id
-                                    )
-                                }
+                                onClick={() => handleCompleteOrder(order.id)}
                                 className="mt-5 w-full bg-green-600 text-white text-sm font-medium py-2 rounded-lg hover:bg-green-700 transition"
                             >
                                 ✅ 標記為已完成

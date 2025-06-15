@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useMqttClient } from "@/hooks/useMqttClient";
 import { getMenuItems } from "@/app/actions/menu";
 import { addOrder } from "@/app/actions/order";
-import { getOrderCheckoutTopic } from "@/utils/mqttTopic";
+import { publishMessage } from "@/app/utils/mqtt";
 
 export default function CheckoutPage() {
     const [cart, setCart] = useState([]);
@@ -12,9 +11,6 @@ export default function CheckoutPage() {
     const [specialRequests, setSpecialRequests] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [user, setUser] = useState({});
-    const [topic, setTopic] = useState("");
-
-    const { publishMessage } = useMqttClient({});
 
     useEffect(() => {
         const sessionUser = sessionStorage.getItem("user");
@@ -24,8 +20,6 @@ export default function CheckoutPage() {
     }, []);
 
     useEffect(() => {
-        setTopic(getOrderCheckoutTopic());
-
         const savedCart = sessionStorage.getItem("cart");
         if (savedCart) {
             setCart(JSON.parse(savedCart));
@@ -66,35 +60,79 @@ export default function CheckoutPage() {
                 specialRequest: specialRequests[item.id] || "",
             }));
             const customerId = user.id;
+            const totalAmount = getTotalPrice();
 
+            let orderData;
             // action
-            let orderData = await addOrder({
+            orderData = await addOrder({
                 orderItems,
                 customerId,
+                totalAmount,
+                status: "PENDING"
             });
             if (!orderData) {
+                // api
                 const response = await fetch(`/api/orders`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        orderItems,
+                        items: orderItems,
                         customerId,
+                        totalAmount,
+                        status: "PENDING"
                     }),
                 });
                 if (!response.ok) {
-                    alert("送出訂單失敗");
-                    return;
+                    throw new Error("送出訂單失敗");
                 }
                 orderData = await response.json();
             }
-            // TODO: 發布 MQTT 訊息
+
+            // 等待一下確保資料庫更新完成
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            // 再次獲取訂單資料以確保資料是最新的
+            const updatedOrderResponse = await fetch(`/api/orders/${orderData.id}`);
+            if (updatedOrderResponse.ok) {
+                orderData = await updatedOrderResponse.json();
+            }
+
+            // 確保訂單數據存在後再發送 MQTT 通知
+            if (orderData && orderData.id) {
+                console.log('準備發送 MQTT 通知:', orderData);
+                try {
+                    // 發送 MQTT 通知
+                    await new Promise((resolve, reject) => {
+                        publishMessage({
+                            type: "NEW_ORDER",
+                            orderId: orderData.id,
+                            status: "PENDING",
+                            timestamp: new Date().toISOString(),
+                            order: orderData // 包含完整的訂單資訊
+                        });
+                        // 給 MQTT 一點時間發送
+                        setTimeout(resolve, 1000);
+                    });
+                    console.log('MQTT 通知已發送');
+                } catch (mqttError) {
+                    console.error('MQTT 發送失敗:', mqttError);
+                    // 即使 MQTT 發送失敗，我們仍然繼續流程
+                }
+            } else {
+                console.error('訂單數據不完整，無法發送 MQTT 通知');
+            }
 
             // 清空購物車
             sessionStorage.removeItem("cart");
+            
+            // 等待一下確保 MQTT 訊息有時間發送
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
             // 回到訂單頁面
             window.location.href = "/orders";
         } catch (err) {
-            alert("送出訂單失敗");
+            console.error("送出訂單失敗:", err);
+            alert("送出訂單失敗：" + (err.message || "未知錯誤"));
         } finally {
             setIsSubmitting(false);
         }

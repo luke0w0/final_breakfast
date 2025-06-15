@@ -71,7 +71,7 @@ export default function Navbar() {
                     className="text-2xl font-bold tracking-wide hover:opacity-90 transition-opacity duration-300"
                     aria-label="前往首頁"
                 >
-                    🍽 網路早餐訂餐系統
+                    🍽 網路早餐訂餐系統{user?.role && user.role !== "CUSTOMER" ? ` - ${user.role === "STAFF" ? "員工" : user.role === "CHEF" ? "廚師" : "管理者"}介面` : ""}
                 </Link>
 
                 <div className="flex flex-wrap items-center gap-4">
@@ -91,10 +91,10 @@ export default function Navbar() {
                             ))}
 
                             <span className="hidden sm:inline-block font-semibold">
-                                您好，{user.name}
+                                您好 {user.name}
                             </span>
 
-                            <NotifyButton />
+                            {user.role === "CUSTOMER" && <NotifyButton />}
 
                             <button
                                 onClick={handelSignOut}

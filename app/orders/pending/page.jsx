@@ -1,27 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useMqttClient } from "@/hooks/useMqttClient";
 import { editOrderStatus, getPendingOrders } from "@/app/actions/order";
 import { addNotification } from "@/app/actions/notification";
+import { subscribeToTopic, publishMessage } from "@/app/utils/mqtt";
 
 export default function PendingOrdersPage() {
     const [orders, setOrders] = useState([]);
-    // 顧客下單的
-    const [topics, setTopics] = useState([]);
-
-    const { messages, publishMessage } = useMqttClient({
-        subscribeTopics: topics ? topics : [],
-    });
 
     useEffect(() => {
-        // 設定 MQTT 主題
-        const newTopics = [
-            getOrderCheckoutTopic(),
-            getCustomerCancelOrderTopic("#"),
-        ];
-        setTopics(newTopics);
-
         const getOrders = async () => {
             try {
                 // action
@@ -39,45 +26,41 @@ export default function PendingOrdersPage() {
                 alert("獲取待處理訂單失敗");
             }
         };
+
+        // 初始獲取訂單
         getOrders();
+
+        // 訂閱 MQTT 訊息
+        subscribeToTopic((message) => {
+            console.log("收到 MQTT 訊息:", message);
+            
+            // 處理新訂單
+            if (message.type === "NEW_ORDER" && message.status === "PENDING") {
+                console.log("收到新訂單通知，重新獲取訂單列表");
+                // 立即重新獲取訂單列表
+                getOrders();
+            }
+            
+            // 處理訂單狀態更新
+            if (message.type === "ORDER_STATUS_UPDATE") {
+                console.log("收到訂單狀態更新通知，重新獲取訂單列表");
+                // 立即重新獲取訂單列表
+                getOrders();
+            }
+
+            // 處理訂單取消
+            if (message.type === "ORDER_STATUS_UPDATE" && message.status === "CANCELLED") {
+                console.log("收到訂單取消通知，重新獲取訂單列表");
+                // 立即重新獲取訂單列表
+                getOrders();
+            }
+        });
+
+        // 清理函數
+        return () => {
+            console.log("清理 MQTT 訂閱");
+        };
     }, []);
-
-    // 當收到 MQTT 訊息時，更新訂單狀態
-    useEffect(() => {
-        if (messages.length === 0) return;
-
-        const lastMessage = messages[messages.length - 1];
-        // 檢查是否為結帳訊息
-        const isCheckoutOrder = lastMessage.topic.includes("checkout");
-        // 檢查是否為取消訂單的訊息
-        const isCancelOrder = lastMessage.topic.includes("cancel");
-
-        if (isCheckoutOrder) {
-            try {
-                const newOrder = JSON.parse(lastMessage.payload);
-                setOrders((prev) => {
-                    // 檢查是否已存在相同 ID 的訂單
-                    const exists = prev.some(
-                        (order) => order.id === newOrder.id
-                    );
-                    return exists ? prev : [newOrder, ...prev];
-                });
-            } catch (err) {
-                console.error("無法解析 MQTT 訊息:", err);
-            }
-        }
-        if (isCancelOrder) {
-            try {
-                const payload = JSON.parse(lastMessage.payload);
-                const orderId = payload.orderId;
-                setOrders((prev) =>
-                    prev.filter((order) => order.id !== orderId)
-                );
-            } catch (err) {
-                console.error("無法解析取消訂單的 MQTT 訊息:", err);
-            }
-        }
-    }, [messages]);
 
     const handleAcceptOrder = async (orderId) => {
         try {
@@ -96,7 +79,22 @@ export default function PendingOrdersPage() {
                     alert("修改訂單狀態失敗");
                     return;
                 }
+                data = await response.json();
             }
+
+            // 確保資料庫更新成功後，發送 MQTT 通知
+            if (data) {
+                console.log('準備發送接受訂單的 MQTT 通知:', data);
+                publishMessage({
+                    type: "ORDER_STATUS_UPDATE",
+                    orderId: orderId,
+                    status: "PREPARING",
+                    timestamp: new Date().toISOString(),
+                    order: data
+                });
+                console.log('接受訂單的 MQTT 通知已發送');
+            }
+
             setOrders((prev) => prev.filter((order) => order.id !== orderId));
 
             // 傳送通知
@@ -132,26 +130,9 @@ export default function PendingOrdersPage() {
                 notificationRes = await response.json();
             }
 
-            // 接受訂單，傳送通知給使用者
-            const topic = ""; // TODO: 設定 MQTT 主題
-            if (notificationRes && notificationRes.id) {
-                // TODO: 準備 MQTT 訊息內容
-                // TODO: 發布 MQTT 訊息(通知)
-            }
-
-            // 發布訂單資料到廚房
-            const kitchenTopic = ""; // TODO: 設定廚房 MQTT 主題
-
-            // TODO: 準備廚房訂單資料
-
-            // TODO: 發布廚房訂單資料到 MQTT
-
-            if (!response.ok) {
-                alert("傳送通知失敗");
-                return;
-            }
         } catch (error) {
             console.error("Failed to update order status:", error);
+            alert("更新訂單狀態失敗：" + error.message);
         }
     };
 

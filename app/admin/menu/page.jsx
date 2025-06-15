@@ -17,54 +17,31 @@ export default function MenuManagementPage() {
     const [editItem, setEditItem] = useState({});
     const [imageFile, setImageFile] = useState(null);
     const [imageUrl, setImageUrl] = useState("");
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
         const getMenu = async () => {
-            const response = await fetch("/api/menu");
-            if (!response.ok) {
-                alert("取得菜單失敗");
-                return;
+            try {
+                setIsLoading(true);
+                setError(null);
+                const response = await fetch("/api/menu");
+                
+                if (!response.ok) {
+                    throw new Error("取得菜單失敗");
+                }
+                
+                const data = await response.json();
+                setMenuItems(data);
+            } catch (error) {
+                console.error("取得菜單時發生錯誤:", error);
+                setError(error.message);
+            } finally {
+                setIsLoading(false);
             }
-            const data = await response.json();
-            setMenuItems(data);
         };
         getMenu();
     }, []);
-
-    const handleCreate = async (e) => {
-        e.preventDefault();
-        try {
-            const itemToSend = {
-                ...newItem,
-                price: parseFloat(newItem.price),
-            };
-
-            const response = await fetch("/api/menu", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(itemToSend),
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(errorText);
-            }
-            const data = await response.json();
-            setMenuItems((prev) => [...prev, data]);
-            setNewItem({
-                name: "",
-                description: "",
-                price: 0,
-                imageUrl: "",
-                isAvailable: true,
-            });
-            setIsCreating(false);
-        } catch (error) {
-            console.error("發生錯誤:", error.message);
-        }
-    };
 
     const handleImageUpload = async () => {
         if (!imageFile) return;
@@ -84,11 +61,62 @@ export default function MenuManagementPage() {
                 throw new Error(data.error || "圖片上傳失敗");
             }
 
+            // 設置圖片 URL
             setImageUrl(data.url);
             setNewItem((prev) => ({ ...prev, imageUrl: data.url }));
         } catch (err) {
             console.error("圖片上傳失敗:", err.message);
+            alert("圖片上傳失敗：" + err.message);
             return;
+        }
+    };
+
+    const handleCreate = async (e) => {
+        e.preventDefault();
+        
+        // 檢查是否已上傳圖片
+        if (!imageUrl) {
+            alert("請先上傳圖片");
+            return;
+        }
+
+        try {
+            const itemToSend = {
+                ...newItem,
+                price: parseFloat(newItem.price),
+                imageUrl: imageUrl // 使用已上傳的圖片 URL
+            };
+
+            const response = await fetch("/api/menu", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(itemToSend),
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText);
+            }
+
+            const data = await response.json();
+            setMenuItems((prev) => [...prev, data]);
+            
+            // 重置表單
+            setNewItem({
+                name: "",
+                description: "",
+                price: 0,
+                imageUrl: "",
+                isAvailable: true,
+            });
+            setImageFile(null);
+            setImageUrl("");
+            setIsCreating(false);
+        } catch (error) {
+            console.error("發生錯誤:", error.message);
+            alert("新增菜單項目失敗：" + error.message);
         }
     };
 
@@ -105,9 +133,18 @@ export default function MenuManagementPage() {
 
     const handleEdit = async (menuId) => {
         try {
+            // 驗證必填欄位
+            if (!editItem.name || !editItem.price) {
+                alert("名稱和價格為必填欄位");
+                return;
+            }
+
             const updatedItemToSend = {
-                ...editItem,
+                name: editItem.name,
+                description: editItem.description || "",
                 price: parseFloat(editItem.price),
+                isAvailable: editItem.isAvailable,
+                imageUrl: editItem.imageUrl || ""
             };
 
             const response = await fetch(`/api/menu/${menuId}`, {
@@ -119,17 +156,26 @@ export default function MenuManagementPage() {
             });
 
             if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(errorText);
+                const errorData = await response.json();
+                throw new Error(errorData.error || "更新失敗");
             }
+
             const updatedItem = await response.json();
 
+            // 更新本地狀態
             setMenuItems((prev) =>
                 prev.map((item) => (item.id === menuId ? updatedItem : item))
             );
+            
+            // 重置編輯狀態
             setEditingId(null);
+            setEditItem({});
+            
+            // 顯示成功訊息
+            alert("更新成功！");
         } catch (error) {
-            console.error("更新失敗:", error.message);
+            console.error("更新失敗:", error);
+            alert("更新失敗：" + error.message);
         }
     };
 
@@ -137,6 +183,31 @@ export default function MenuManagementPage() {
         setEditingId(null);
         setEditItem({});
     };
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-orange-100 via-pink-100 to-red-100 px-4 sm:px-8 py-8">
+                <div className="max-w-6xl mx-auto">
+                    <div className="flex justify-center items-center h-64">
+                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500"></div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-orange-100 via-pink-100 to-red-100 px-4 sm:px-8 py-8">
+                <div className="max-w-6xl mx-auto">
+                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                        <strong className="font-bold">錯誤！</strong>
+                        <span className="block sm:inline"> {error}</span>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-orange-100 via-pink-100 to-red-100 px-4 sm:px-8 py-8">
@@ -407,15 +478,15 @@ export default function MenuManagementPage() {
                             >
                                 {item.imageUrl ? (
                                     <Image
-                                        src={item.imageUrl}
+                                        src={item.imageUrl.replace(/^\/public/, '')}
                                         alt={item.name}
                                         width={400}
                                         height={250}
                                         className="rounded-md w-full h-48 object-cover mb-4"
                                     />
                                 ) : (
-                                    <div className="flex justify-center items-center rounded-md w-full h-48 object-cover mb-4">
-                                        無圖片
+                                    <div className="flex justify-center items-center rounded-md w-full h-48 object-cover mb-4 bg-gray-100">
+                                        <span className="text-gray-400">無圖片</span>
                                     </div>
                                 )}
 

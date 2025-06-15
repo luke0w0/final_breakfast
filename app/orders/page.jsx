@@ -1,225 +1,226 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useMqttClient } from "@/hooks/useMqttClient";
 import useUser from "@/hooks/useUser";
 import { editOrderStatus, getCustomerOrder } from "@/app/actions/order";
+import { subscribeToTopic, publishMessage } from "@/app/utils/mqtt";
 
 export default function OrdersPage() {
     const [orders, setOrders] = useState([]);
-    const [topic, setTopic] = useState("");
-    const { user, loading } = useUser();
-
-    const { messages, publishMessage } = useMqttClient({
-        subscribeTopics: topic ? [topic] : [],
-    });
+    const [loading, setLoading] = useState(true);
+    const { user, loading: userLoading } = useUser();
 
     useEffect(() => {
-        if (loading) {
-            return;
-        }
-        setTopic(getKitchenReadyOrderTopic("#"));
-
-        const getOrders = async () => {
+        const fetchOrders = async () => {
             try {
-                // action
-                let data = await getCustomerOrder(user.id);
-                if (!data) {
-                    // api
-                    const response = await fetch(
-                        `/api/orders/customers/${user.id}`
-                    );
-                    data = await response.json();
+                if (user) {
+                    // 直接使用 API 獲取訂單
+                    const response = await fetch(`/api/orders?customerId=${user.id}`);
+                    if (!response.ok) {
+                        throw new Error('獲取訂單失敗');
+                    }
+                    const data = await response.json();
+                    console.log('獲取到的訂單:', data); // 用於調試
+                    setOrders(data || []);
                 }
-                setOrders(data);
-            } catch (err) {
-                alert("獲取顧客訂單失敗");
+            } catch (error) {
+                console.error("獲取訂單時發生錯誤:", error);
+            } finally {
+                setLoading(false);
             }
         };
-        getOrders();
-    }, [loading]);
 
-    // 當收到 MQTT 訊息時，更新訂單狀態
-    useEffect(() => {
-        if (messages.length === 0) return;
+        if (!userLoading) {
+            // 初始獲取訂單
+            fetchOrders();
 
-        const lastMessage = messages[messages.length - 1];
+            // 訂閱 MQTT 訊息
+            subscribeToTopic((message) => {
+                console.log("收到 MQTT 訊息:", message);
+                
+                // 處理新訂單
+                if (message.type === "NEW_ORDER" && message.status === "PENDING") {
+                    console.log("收到新訂單通知，重新獲取訂單列表");
+                    // 立即重新獲取訂單列表
+                    fetchOrders();
+                }
+                
+                // 處理訂單狀態更新
+                if (message.type === "ORDER_STATUS_UPDATE") {
+                    console.log("收到訂單狀態更新通知，重新獲取訂單列表");
+                    // 立即重新獲取訂單列表
+                    fetchOrders();
+                }
 
-        const payload = JSON.parse(lastMessage.payload);
+                // 處理訂單取消
+                if (message.type === "ORDER_STATUS_UPDATE" && message.status === "CANCELLED") {
+                    console.log("收到訂單取消通知，重新獲取訂單列表");
+                    // 立即重新獲取訂單列表
+                    fetchOrders();
+                }
+            });
 
-        const status = payload.status;
-        const orderId = payload.orderId;
-
-        setOrders((prev) => {
-            return prev.map((order) =>
-                order.id === orderId ? { ...order, status } : order
-            );
-        });
-    }, [messages]);
-
-    const getStatusText = (status) => {
-        switch (status) {
-            case "PENDING":
-                return "店家未接單";
-            case "PREPARING":
-                return "餐點準備中";
-            case "READY":
-                return "餐點可領取";
-            case "COMPLETED":
-                return "交易完成";
-            case "CANCELLED":
-                return "交易取消";
-            default:
-                return "錯誤...";
+            // 清理函數
+            return () => {
+                // 這裡可以添加清理邏輯，如果需要
+                console.log("清理 MQTT 訂閱");
+            };
         }
-    };
-    const getStatusColor = (status) => {
-        switch (status) {
-            case "PENDING":
-                return "bg-yellow-100 text-yellow-800";
-            case "PREPARING":
-                return "bg-blue-100 text-blue-800";
-            case "READY":
-                return "bg-green-100 text-green-800";
-            case "COMPLETED":
-                return "bg-gray-100 text-gray-800";
-            case "CANCELLED":
-                return "bg-red-100 text-red-800";
-            default:
-                return "bg-gray-100 text-gray-800";
-        }
-    };
-    const handleCancelOrderButton = async (orderId) => {
+    }, [user, userLoading]);
+
+    const handleCancelOrder = async (orderId) => {
         try {
-            // action
-            let data = await editOrderStatus(
-                {
-                    status: "CANCELLED",
-                },
-                orderId
-            );
+            setLoading(true); // 開始載入
+            // 先更新資料庫
+            let data = await editOrderStatus({ status: "CANCELLED" }, orderId);
+            
             if (!data) {
-                // api
+                // 如果 action 失敗，使用 API
                 const response = await fetch(`/api/orders/${orderId}/status`, {
                     method: "PATCH",
-                    body: JSON.stringify({
-                        status: "CANCELLED",
-                    }),
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ status: "CANCELLED" }),
                 });
+                
                 if (!response.ok) {
-                    alert("訂單取消失敗");
-                    return;
+                    throw new Error("取消訂單失敗");
                 }
+                data = await response.json();
             }
-            setOrders((prev) =>
-                prev.map((order) =>
-                    order.id !== orderId
-                        ? order
-                        : { ...order, status: "CANCELLED" }
-                )
-            );
 
-            // 發布訂單取消的 MQTT 訊息
-            const topic = ""; // TODO: 設定 MQTT 主題
-            // TODO: 準備訊息內容
+            // 確保資料庫更新成功後，發送 MQTT 通知
+            if (data) {
+                console.log('準備發送取消訂單的 MQTT 通知:', data);
+                publishMessage({
+                    type: "ORDER_STATUS_UPDATE",
+                    orderId: orderId,
+                    status: "CANCELLED",
+                    timestamp: new Date().toISOString(),
+                    order: data
+                });
+                console.log('取消訂單的 MQTT 通知已發送');
+            }
 
-            // TODO: 發布 MQTT 訊息
+            // 更新本地狀態
+            setOrders(prev => prev.filter(order => order.id !== orderId));
+            
         } catch (error) {
-            alert("訂單取消失敗");
+            console.error("取消訂單時發生錯誤:", error);
+            alert("取消訂單失敗：" + error.message);
+        } finally {
+            setLoading(false); // 結束載入
         }
     };
+
+    if (loading || userLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-100 via-pink-100 to-red-100">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+        );
+    }
+
+    if (!user) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-100 via-pink-100 to-red-100">
+                <div className="text-center">
+                    <h1 className="text-2xl font-bold text-gray-800 mb-4">請先登入</h1>
+                    <p className="text-gray-600">您需要登入才能查看訂單</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <div className="min-h-screen bg-gradient-to-br from-orange-100 via-pink-100 to-red-100 px-4 sm:px-6 py-8">
-            <div className="max-w-4xl mx-auto">
-                <h1 className="text-3xl font-bold mb-6 text-center sm:text-left text-gray-800">
-                    我的訂單
+        <div className="min-h-screen px-6 py-10 bg-gradient-to-br from-orange-100 via-pink-100 to-red-100">
+            <div className="max-w-6xl mx-auto">
+                <h1 className="text-3xl font-bold text-gray-800 mb-6">
+                    📋 我的訂單
                 </h1>
 
                 {orders.length === 0 ? (
-                    <p className="text-gray-500 text-center sm:text-left">
-                        您目前沒有任何訂單。
-                    </p>
+                    <div className="text-center py-10">
+                        <p className="text-gray-600">您還沒有任何訂單</p>
+                    </div>
                 ) : (
-                    <div className="space-y-6">
+                    <div className="grid gap-6">
                         {orders.map((order) => (
                             <div
                                 key={order.id}
-                                className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition"
+                                className="bg-white rounded-lg shadow-md p-6"
                             >
-                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+                                <div className="flex justify-between items-start mb-4">
                                     <div>
-                                        <h3 className="text-lg font-bold text-gray-800">
+                                        <h2 className="text-xl font-semibold text-gray-800">
                                             訂單 #{order.id.slice(0, 8)}
-                                        </h3>
-                                        <p className="text-sm text-gray-500">
-                                            {new Date(
-                                                order.createdAt
-                                            ).toLocaleString()}
+                                        </h2>
+                                        <p className="text-gray-600">
+                                            建立時間：{new Date(order.createdAt).toLocaleString()}
                                         </p>
                                     </div>
-                                    <span
-                                        className={`mt-2 sm:mt-0 px-3 py-2 rounded-full text-xs font-medium ${getStatusColor(
-                                            order.status
-                                        )}`}
-                                    >
-                                        {getStatusText(order.status)}
-                                    </span>
-                                </div>
-
-                                <div className="mb-3 space-y-1">
-                                    <p className="text-gray-700">
-                                        <strong>總金額：</strong> $
-                                        {order.totalAmount.toFixed(2)}
-                                    </p>
-                                </div>
-
-                                <div className="border-t pt-4">
-                                    <h4 className="text-sm font-semibold mb-2 text-gray-700">
-                                        餐點內容：
-                                    </h4>
-                                    <ul className="space-y-2">
-                                        {order.items.map((item) => (
-                                            <li
-                                                key={item.id}
-                                                className="flex justify-between text-sm text-gray-600"
+                                    <div className="flex items-center gap-2">
+                                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                                            order.status === "PENDING" ? "bg-yellow-100 text-yellow-800" :
+                                            order.status === "PREPARING" ? "bg-blue-100 text-blue-800" :
+                                            order.status === "READY" ? "bg-green-100 text-green-800" :
+                                            order.status === "COMPLETED" ? "bg-gray-100 text-gray-800" :
+                                            "bg-red-100 text-red-800"
+                                        }`}>
+                                            {order.status === "PENDING" ? "待處理" :
+                                             order.status === "PREPARING" ? "製作中" :
+                                             order.status === "READY" ? "已完成" :
+                                             order.status === "COMPLETED" ? "已取餐" :
+                                             "已取消"}
+                                        </span>
+                                        {order.status === "PENDING" && (
+                                            <button
+                                                onClick={() => handleCancelOrder(order.id)}
+                                                className="px-3 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
                                             >
-                                                <span>
-                                                    {item.menuItem.name} ×{" "}
-                                                    {item.quantity}
-                                                    {item.specialRequest && (
-                                                        <span className="block text-xs text-gray-400">
-                                                            備註：
-                                                            {
-                                                                item.specialRequest
-                                                            }
-                                                        </span>
-                                                    )}
-                                                </span>
-                                                <span>
-                                                    $
-                                                    {(
-                                                        item.menuItem.price *
-                                                        item.quantity
-                                                    ).toFixed(2)}
-                                                </span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                                {order.status === "PENDING" && (
-                                    <div className="mt-4 text-center sm:text-right">
-                                        <button
-                                            onClick={() => {
-                                                handleCancelOrderButton(
-                                                    order.id
-                                                );
-                                            }}
-                                            className="inline-block bg-gradient-to-r from-red-400 to-red-600 text-white px-5 py-2 rounded-md hover:opacity-90 transition"
-                                        >
-                                            取消訂單
-                                        </button>
+                                                取消訂單
+                                            </button>
+                                        )}
                                     </div>
-                                )}
+                                </div>
+
+                                <div className="space-y-4">
+                                    {order.items.map((item) => (
+                                        <div
+                                            key={item.id}
+                                            className="flex justify-between items-center"
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-16 h-16 relative">
+                                                    <img
+                                                        src={item.menuItem.imageUrl || "/placeholder.png"}
+                                                        alt={item.menuItem.name}
+                                                        className="rounded-lg object-cover w-full h-full"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <h3 className="font-medium text-gray-800">
+                                                        {item.menuItem.name}
+                                                    </h3>
+                                                    <p className="text-sm text-gray-600">
+                                                        數量：{item.quantity}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="font-medium text-gray-800">
+                                                ${item.menuItem.price * item.quantity}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="mt-6 pt-6 border-t border-gray-200">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-gray-600">總計</span>
+                                        <span className="text-xl font-bold text-gray-800">
+                                            ${order.totalAmount}
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
                         ))}
                     </div>
