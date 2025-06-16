@@ -2,9 +2,20 @@
 
 import { motion } from "framer-motion";
 import { useNotifications } from '@/hooks/useNotifications'
+import { useSession } from "next-auth/react";
+import { redirect } from "next/navigation";
 
 export default function NotifyPage() {
-    const { notifications, loading } = useNotifications();
+    const { data: session, status } = useSession();
+    const { notifications, loading, error, unreadCount } = useNotifications();
+
+    if (status === "loading") {
+        return <div>載入中...</div>;
+    }
+
+    if (status === "unauthenticated") {
+        redirect("/login");
+    }
 
     const getIcon = (type) => {
         switch (type) {

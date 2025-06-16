@@ -3,14 +3,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 
-const useNotifications = () => {
-    const { data: session } = useSession();
+export const useNotifications = () => {
+    const { data: session, status } = useSession();
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
     const fetchNotifications = useCallback(async () => {
-        if (!session?.user?.id) return;
+        if (!session?.user?.id || status !== "authenticated") return;
 
         try {
             setLoading(true);
@@ -30,14 +30,14 @@ const useNotifications = () => {
         } finally {
             setLoading(false);
         }
-    }, [session?.user?.id]);
+    }, [session?.user?.id, status]);
 
     // 初始載入
     useEffect(() => {
-        if (session?.user?.id) {
+        if (status === "authenticated" && session?.user?.id) {
             fetchNotifications();
         }
-    }, [session?.user?.id, fetchNotifications]);
+    }, [session?.user?.id, status, fetchNotifications]);
 
     // 計算未讀通知數量
     const unreadCount = notifications.filter(n => !n.isRead).length;
@@ -52,5 +52,3 @@ const useNotifications = () => {
         refetch: fetchNotifications
     };
 };
-
-export { useNotifications };
