@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 
-export const useNotifications = () => {
+const useNotifications = () => {
     const { data: session } = useSession();
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -52,3 +52,5 @@ export const useNotifications = () => {
         refetch: fetchNotifications
     };
 };
+
+export default useNotifications;
