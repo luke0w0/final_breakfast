@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import useNotifications from "@/hooks/useNotifications";
+import { useNotifications } from '@/hooks/useNotifications'
 
 export default function NotifyPage() {
     const { notifications, loading } = useNotifications();
