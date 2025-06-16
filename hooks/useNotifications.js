@@ -53,4 +53,4 @@ const useNotifications = () => {
     };
 };
 
-export default useNotifications;
+export { useNotifications };
